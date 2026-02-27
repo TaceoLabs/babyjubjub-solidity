@@ -1,66 +1,26 @@
-## Foundry
+ [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# BabyJubJub Solidity Library
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Minimal Solidity implementation of core operations on the **BabyJubJub elliptic curve**.
 
-Foundry consists of:
+## Install
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+Using Foundry:
 
-## Documentation
-
-https://book.getfoundry.sh/
+```bash
+forge install TaceoLabs/babyjubjub-solidity
+```
 
 ## Usage
 
-### Build
+```solidity
+import "babyjubjub-solidity/BabyJubJub.sol";
 
-```shell
-$ forge build
+using BabyJubJub for BabyJubJub.Affine;
 ```
 
-### Test
+## Security
 
-```shell
-$ forge test
-```
+This library has been audited part of an larger audit. Since then we extracted this as a library to better use it in other projects. 
 
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+Audit reports can be found in `/audits`.
