@@ -19,6 +19,11 @@ import "babyjubjub-solidity/BabyJubJub.sol";
 using BabyJubJub for BabyJubJub.Affine;
 ```
 
+Then add this to your remappings.txt:
+```
+@taceo/babyjubjub/=lib/babyjubjub-solidity/src/
+```
+
 ## Security
 
 This library has been audited part of an larger audit. Since then we extracted this as a library to better use it in other projects. 
