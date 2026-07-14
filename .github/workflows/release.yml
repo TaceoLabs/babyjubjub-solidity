@@ -1,0 +1,57 @@
+name: Release
+
+permissions: {}
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: Update changelog and create GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Update CHANGELOG.md
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
+        with:
+          config: cliff.toml
+          args: --tag ${{ github.ref_name }}
+        env:
+          OUTPUT: CHANGELOG.md
+
+      - name: Open changelog PR
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          base: main
+          branch: changelog/${{ github.ref_name }}
+          title: "chore: update changelog for ${{ github.ref_name }}"
+          commit-message: "chore: update changelog for ${{ github.ref_name }}"
+          add-paths: CHANGELOG.md
+
+      - name: Checkout release tag
+        run: git checkout -f ${{ github.ref_name }}
+
+      - name: Generate release notes
+        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
+        with:
+          config: cliff.toml
+          args: --current --strip header
+        env:
+          OUTPUT: RELEASE_NOTES.md
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          body_path: RELEASE_NOTES.md
