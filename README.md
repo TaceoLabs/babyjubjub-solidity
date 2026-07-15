@@ -40,6 +40,13 @@ Add one of the following to your `remappings.txt`, depending on how you installe
 @taceo/babyjubjub/=dependencies/babyjubjub-solidity-1.0.0/src/
 ```
 
+## Development
+
+```bash
+forge soldeer install
+forge test
+```
+
 ## Security
 
 This library has been audited part of an larger audit. Since then we extracted this as a library to better use it in other projects. 

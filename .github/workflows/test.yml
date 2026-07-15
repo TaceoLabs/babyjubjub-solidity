@@ -20,13 +20,15 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           persist-credentials: false
-          submodules: recursive
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1.9.0
 
       - name: Show Forge version
         run: forge --version
+
+      - name: Install Soldeer dependencies
+        run: forge soldeer install
 
       - name: Run Forge fmt
         run: forge fmt --check

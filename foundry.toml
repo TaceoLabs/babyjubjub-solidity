@@ -1,5 +1,11 @@
 [profile.default]
 src = "src"
 out = "out"
-libs = ["lib"]
+libs = ["dependencies"]
 solc_version = "0.8.24"
+
+[dependencies]
+forge-std = "1.15.0"
+
+[soldeer]
+remappings_generate = false

@@ -1,13 +1,12 @@
 .git/
 .github/
 .gitignore
-.gitmodules
 .ignore
 .soldeerignore
 /audits
 CHANGELOG.md
 cliff.toml
-foundry.lock
-lib/
+dependencies/
+soldeer.lock
 soljson-latest.js
 test/
