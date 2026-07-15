@@ -39,8 +39,11 @@ jobs:
           commit-message: "chore: update changelog for ${{ github.ref_name }}"
           add-paths: CHANGELOG.md
 
-      - name: Checkout release tag
-        run: git checkout -f ${{ github.ref_name }}
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: false
+          fetch-depth: 0
 
       - name: Generate release notes
         uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
