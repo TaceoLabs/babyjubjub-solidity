@@ -1,0 +1,7 @@
+name = "babyjubjub-solidity-proof"
+version = "0.1.0"
+defaultTargets = ["BabyJubJubProof"]
+
+[[lean_lib]]
+name = "BabyJubJubProof"
+srcDir = "lean"
