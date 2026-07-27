@@ -10,3 +10,4 @@ dependencies/
 soldeer.lock
 soljson-latest.js
 test/
+lean/
