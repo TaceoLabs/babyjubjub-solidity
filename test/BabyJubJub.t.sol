@@ -13,6 +13,13 @@ contract BabyJubJubTest is Test {
     uint256 constant THREE_G_X = 2763488322167937039616325905516046217694264098671987087929565332380420898366;
     uint256 constant THREE_G_Y = 15305195750036305661220525648961313310481046260814497672243197092298550508693;
 
+    uint256 constant FULL_GENERATOR_X = 995203441582195749578291179787384436505546430278305826713579947235728471134;
+    uint256 constant FULL_GENERATOR_Y = 5472060717959818805561601436314318772137091100104008585924551046643952123905;
+
+    // T = [R]G, where G is the standardized full-order generator. T has order eight.
+    uint256 constant TORSION_GENERATOR_X = 4342719913949491028786768530115087822524712248835451589697801404893164183326;
+    uint256 constant TORSION_GENERATOR_Y = 4826523245007015323400664741523384119579596407052839571721035538011798951543;
+
     function setUp() public {}
 
     function testIdentityPoint() public pure {
@@ -23,6 +30,58 @@ contract BabyJubJubTest is Test {
     function testGeneratorOnCurve() public pure {
         assertTrue(BabyJubJub.isOnCurve(BabyJubJub.generator()));
         assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(BabyJubJub.generator()));
+    }
+
+    function testTateIdentityAndGenerator() public view {
+        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(BabyJubJub.identity()));
+        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(BabyJubJub.generator()));
+    }
+
+    function testTateRejectsFullOrderGenerator() public view {
+        BabyJubJub.Affine memory fullGenerator = BabyJubJub.Affine({x: FULL_GENERATOR_X, y: FULL_GENERATOR_Y});
+        assertTrue(BabyJubJub.isOnCurve(fullGenerator));
+        assertFalse(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(fullGenerator));
+        assertFalse(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(fullGenerator));
+    }
+
+    function testTateMatchesOrderCheckAcrossTorsionCosets() public view {
+        BabyJubJub.Affine memory torsionGenerator = BabyJubJub.Affine({x: TORSION_GENERATOR_X, y: TORSION_GENERATOR_Y});
+        BabyJubJub.Affine memory torsion = BabyJubJub.identity();
+
+        for (uint256 i = 0; i < 8; ++i) {
+            bool expected = i == 0;
+
+            assertTrue(BabyJubJub.isOnCurve(torsion));
+            assertEq(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(torsion), expected);
+            assertEq(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(torsion), expected);
+
+            BabyJubJub.Affine memory mixed = BabyJubJub.add(BabyJubJub.generator(), torsion);
+            assertTrue(BabyJubJub.isOnCurve(mixed));
+            assertEq(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(mixed), expected);
+            assertEq(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(mixed), expected);
+
+            torsion = BabyJubJub.add(torsion, torsionGenerator);
+        }
+
+        assertEq(torsion.x, 0);
+        assertEq(torsion.y, 1);
+    }
+
+    function testFuzzTateMatchesOrderCheck(uint256 scalar, uint8 torsionMultiple) public view {
+        scalar %= BabyJubJub.R;
+        torsionMultiple %= 8;
+
+        BabyJubJub.Affine memory point = BabyJubJub.scalarMul(scalar, BabyJubJub.generator());
+        BabyJubJub.Affine memory torsionGenerator = BabyJubJub.Affine({x: TORSION_GENERATOR_X, y: TORSION_GENERATOR_Y});
+        BabyJubJub.Affine memory torsion = BabyJubJub.identity();
+        for (uint256 i = 0; i < torsionMultiple; ++i) {
+            torsion = BabyJubJub.add(torsion, torsionGenerator);
+        }
+        point = BabyJubJub.add(point, torsion);
+
+        bool orderCheck = BabyJubJub.isInCorrectSubgroupAssumingOnCurve(point);
+        assertEq(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(point), orderCheck);
+        assertEq(orderCheck, torsionMultiple == 0);
     }
 
     function testIsEmpty() public pure {

@@ -17,6 +17,23 @@ library BabyJubJub {
     uint256 constant GEN_X = 5299619240641551281634865583518297030282874472190772894086521144482721001553;
     uint256 constant GEN_Y = 16950150798460657717958625567821834550301663161624707787222815936182638968203;
 
+    // Constants for the reduced 8-Tate pairing subgroup check. Baby JubJub is
+    // birational to the Montgomery curve v^2 = u^3 + 168698*u^2 + u. The
+    // point T = [R]G below has order eight on that curve. TATE_TANGENT_0 is
+    // the tangent slope at T; the tangent slope at [2]T equals TATE_TWO_T_Y.
+    uint256 private constant TATE_FINAL_EXPONENT =
+        2736030358979909402780800718157159386068545550052004292962275523321976061952;
+    uint256 private constant TATE_T_X = 19799329160503878365519859265345525785148473002902384773314932802961476726446;
+    uint256 private constant TATE_T_Y = 17254532040196108728490891380973133526547459744854918265191993098218014369797;
+    uint256 private constant TATE_TANGENT_0 =
+        5125366436769623165205660392107939355810725029703343239946747673935168202680;
+    // [2]T has Montgomery coordinates (1, TATE_TWO_T_Y), and its tangent
+    // slope happens to equal its y-coordinate.
+    uint256 private constant TATE_TWO_T_Y =
+        14673962723734255200314198873237586429337747973199041533368185129026308523766;
+
+    error ModExpPrecompileFailed();
+
     struct Affine {
         uint256 x;
         uint256 y;
@@ -380,6 +397,19 @@ library BabyJubJub {
         return x1 == 0 && y1 == z1 && p.y != 0;
     }
 
+    /// @notice Checks prime-order subgroup membership using a reduced 8-Tate pairing.
+    /// @dev This method assumes that `p` is on the curve and that both coordinates are reduced modulo Q.
+    ///      The check uses the fact that Baby JubJub is cyclic of order 8*R and 8 divides Q-1. If T is
+    ///      a point of order eight, the prime-order subgroup is exactly the kernel of P -> t_8(T, P).
+    ///      The final field exponentiation is evaluated by the EVM modular-exponentiation precompile.
+    /// @param p The affine point.
+    /// @return True if the point is in the prime-order subgroup, false otherwise.
+    function isInCorrectSubgroupAssumingOnCurveTate(Affine calldata p) public view returns (bool) {
+        // The Edwards identity has no image under the affine Edwards-to-Montgomery map.
+        if (p.x == 0 && p.y == 1) return true;
+        return _modExpPrecompile(_tateMillerValue(p.x, p.y), TATE_FINAL_EXPONENT, Q) == 1;
+    }
+
     /// @notice Computes the lagrange coefficients for the provided party IDs (starting at zero) and the threshold of the secret-sharing. We expect callsite to check that. Importantly, this method will always return an array with length numPeers, where lagrange coefficient of party ID is on index in the array (with zero for not participating nodes). We need this because the nodes will access this array with their partyID.
     /// This method will revert if either of those cases occurs:
     ///    * the length of ids != numPeers
@@ -617,6 +647,69 @@ library BabyJubJub {
 
     function _modInverse(uint256 a, uint256 P) private pure returns (uint256) {
         return _expmod(a, P - 2, P);
+    }
+
+    function _tateMillerValue(uint256 x, uint256 y) private pure returns (uint256) {
+        // Projective Montgomery coordinates for
+        //   u = (1+y)/(1-y), v = (1+y)/((1-y)*x):
+        //   (U : V : W) = ((1+y)*x : 1+y : (1-y)*x).
+        // Keeping the coordinates projective avoids a field inversion.
+        uint256 v = addmod(1, y, Q);
+        uint256 u = mulmod(v, x, Q);
+        uint256 w = mulmod(addmod(1, Q - y, Q), x, Q);
+
+        uint256 numerator = _tateMillerNumerator(u, v, w);
+
+        // The three-step Miller function is N/D with
+        //   N = line(T)^4 * line([2]T)^2
+        //   D = W * (U-W)^4 * U.
+        uint256 uMinusW = addmod(u, Q - w, Q);
+        uint256 uMinusWSquared = mulmod(uMinusW, uMinusW, Q);
+        uint256 denominator = mulmod(w, mulmod(uMinusWSquared, uMinusWSquared, Q), Q);
+        denominator = mulmod(denominator, u, Q);
+
+        // (N/D)^((Q-1)/8) = (N*D^7)^((Q-1)/8), since D^(Q-1) = 1.
+        // A zero denominator can only occur at a nonidentity torsion point under
+        // the on-curve assumption; returning zero correctly rejects those points.
+        uint256 denominatorSquared = mulmod(denominator, denominator, Q);
+        uint256 denominatorFourth = mulmod(denominatorSquared, denominatorSquared, Q);
+        uint256 denominatorSeventh = mulmod(mulmod(denominatorFourth, denominatorSquared, Q), denominator, Q);
+        return mulmod(numerator, denominatorSeventh, Q);
+    }
+
+    function _tateMillerNumerator(uint256 u, uint256 v, uint256 w) private pure returns (uint256) {
+        // Numerators of the tangent-line evaluations at T and [2]T.
+        uint256 line0 = addmod(v, Q - mulmod(TATE_T_Y, w, Q), Q);
+        uint256 uMinusTxW = addmod(u, Q - mulmod(TATE_T_X, w, Q), Q);
+        line0 = addmod(line0, Q - mulmod(TATE_TANGENT_0, uMinusTxW, Q), Q);
+
+        uint256 line1 = addmod(v, Q - mulmod(TATE_TWO_T_Y, w, Q), Q);
+        uint256 uMinusW = addmod(u, Q - w, Q);
+        line1 = addmod(line1, Q - mulmod(TATE_TWO_T_Y, uMinusW, Q), Q);
+
+        uint256 line0Squared = mulmod(line0, line0, Q);
+        uint256 line0Fourth = mulmod(line0Squared, line0Squared, Q);
+        return mulmod(line0Fourth, mulmod(line1, line1, Q), Q);
+    }
+
+    /// @dev Evaluates base^exponent mod modulus using the EVM precompile at address 0x05.
+    function _modExpPrecompile(uint256 base, uint256 exponent, uint256 modulus) private view returns (uint256 result) {
+        bool success;
+        assembly ("memory-safe") {
+            let input := mload(0x40)
+            mstore(input, 0x20)
+            mstore(add(input, 0x20), 0x20)
+            mstore(add(input, 0x40), 0x20)
+            mstore(add(input, 0x60), base)
+            mstore(add(input, 0x80), exponent)
+            mstore(add(input, 0xa0), modulus)
+
+            success := staticcall(gas(), 0x05, input, 0xc0, input, 0x20)
+            success := and(success, eq(returndatasize(), 0x20))
+            result := mload(input)
+            mstore(0x40, add(input, 0xc0))
+        }
+        if (!success) revert ModExpPrecompileFailed();
     }
 
     function _expmod(uint256 base, uint256 e, uint256 m) private pure returns (uint256 result) {

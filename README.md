@@ -31,6 +31,16 @@ import "babyjubjub-solidity/BabyJubJub.sol";
 using BabyJubJub for BabyJubJub.Affine;
 ```
 
+For an untrusted affine point, check the canonical coordinates and curve equation before using the gas-efficient subgroup check:
+
+```solidity
+require(BabyJubJub.isOnCurve(point));
+require(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(point));
+```
+
+The Tate-based check is `view` because it uses the EVM modular-exponentiation precompile. The original pure
+`isInCorrectSubgroupAssumingOnCurve` order-multiplication check remains available as a reference implementation.
+
 Add one of the following to your `remappings.txt`, depending on how you installed the library:
 ```
 # forge install
