@@ -88,12 +88,16 @@ theorem final_exponent_is_correct : 8 * TateFinalExponent = Q - 1 := by
 
 def identity : Affine := { x := 0, y := 1 }
 
+/-- The identity justifying the folded `line0` evaluation in
+`_tateMillerNumerator`: `TateTangent0 * TateTX - TateTY = TateTX (mod Q)`. -/
+theorem tangent_fold_identity :
+    (TateTangent0 * TateTX) % Q = (TateTY + TateTX) % Q := by
+  native_decide
+
 /-- Exact transcription of `_tateMillerNumerator`. -/
-def tateMillerNumerator (u v w uMinusW : Nat) : Nat :=
-  let line0 := submod (submod v (mulmod TateTY w Q) Q)
-    (mulmod TateTangent0 (submod u (mulmod TateTX w Q) Q) Q) Q
-  let line1 := submod (submod v (mulmod TateTwoTY w Q) Q)
-    (mulmod TateTwoTY uMinusW Q) Q
+def tateMillerNumerator (u v w : Nat) : Nat :=
+  let line0 := addmod (submod v (mulmod TateTangent0 u Q) Q) (mulmod TateTX w Q) Q
+  let line1 := submod v (mulmod TateTwoTY u Q) Q
   let line0Squared := mulmod line0 line0 Q
   let line0Fourth := mulmod line0Squared line0Squared Q
   mulmod line0Fourth (mulmod line1 line1 Q) Q
@@ -104,7 +108,7 @@ def tateMillerValue (p : Affine) : Nat :=
   let u := mulmod v p.x Q
   let w := mulmod (submod 1 p.y Q) p.x Q
   let uMinusW := submod u w Q
-  let numerator := tateMillerNumerator u v w uMinusW
+  let numerator := tateMillerNumerator u v w
   let uMinusWSquared := mulmod uMinusW uMinusW Q
   let denominator := mulmod (mulmod w (mulmod uMinusWSquared uMinusWSquared Q) Q) u Q
   let denominatorSquared := mulmod denominator denominator Q

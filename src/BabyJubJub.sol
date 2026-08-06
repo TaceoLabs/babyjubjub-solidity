@@ -665,7 +665,7 @@ library BabyJubJub {
         uint256 w = mulmod(_submod(1, y, Q), x, Q);
 
         uint256 uMinusW = _submod(u, w, Q);
-        uint256 numerator = _tateMillerNumerator(u, v, w, uMinusW);
+        uint256 numerator = _tateMillerNumerator(u, v, w);
 
         // The three-step Miller function is N/D with
         //   N = line(T)^4 * line([2]T)^2
@@ -683,14 +683,15 @@ library BabyJubJub {
         return mulmod(numerator, denominatorSeventh, Q);
     }
 
-    function _tateMillerNumerator(uint256 u, uint256 v, uint256 w, uint256 uMinusW) private pure returns (uint256) {
-        // Numerators of the tangent-line evaluations at T and [2]T.
-        uint256 line0 = _submod(v, mulmod(TATE_T_Y, w, Q), Q);
-        uint256 uMinusTxW = _submod(u, mulmod(TATE_T_X, w, Q), Q);
-        line0 = _submod(line0, mulmod(TATE_TANGENT_0, uMinusTxW, Q), Q);
-
-        uint256 line1 = _submod(v, mulmod(TATE_TWO_T_Y, w, Q), Q);
-        line1 = _submod(line1, mulmod(TATE_TWO_T_Y, uMinusW, Q), Q);
+    function _tateMillerNumerator(uint256 u, uint256 v, uint256 w) private pure returns (uint256) {
+        // Numerators of the tangent-line evaluations at T and [2]T, folded
+        // using TATE_TANGENT_0 * TATE_T_X - TATE_T_Y == TATE_T_X (mod Q):
+        //   line0 = v - TATE_T_Y*w - TATE_TANGENT_0*(u - TATE_T_X*w)
+        //         = v - TATE_TANGENT_0*u + TATE_T_X*w
+        //   line1 = v - TATE_TWO_T_Y*w - TATE_TWO_T_Y*(u - w)
+        //         = v - TATE_TWO_T_Y*u
+        uint256 line0 = addmod(_submod(v, mulmod(TATE_TANGENT_0, u, Q), Q), mulmod(TATE_T_X, w, Q), Q);
+        uint256 line1 = _submod(v, mulmod(TATE_TWO_T_Y, u, Q), Q);
 
         uint256 line0Squared = mulmod(line0, line0, Q);
         uint256 line0Fourth = mulmod(line0Squared, line0Squared, Q);
