@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.15;
 
 /// @title BabyJubJub Elliptic Curve Operations
 /// @notice A library for performing operations on the BabyJubJub elliptic curve. At the moment limited to point addition and curve membership check.
