@@ -89,11 +89,11 @@ theorem final_exponent_is_correct : 8 * TateFinalExponent = Q - 1 := by
 def identity : Affine := { x := 0, y := 1 }
 
 /-- Exact transcription of `_tateMillerNumerator`. -/
-def tateMillerNumerator (u v w : Nat) : Nat :=
+def tateMillerNumerator (u v w uMinusW : Nat) : Nat :=
   let line0 := submod (submod v (mulmod TateTY w Q) Q)
     (mulmod TateTangent0 (submod u (mulmod TateTX w Q) Q) Q) Q
   let line1 := submod (submod v (mulmod TateTwoTY w Q) Q)
-    (mulmod TateTwoTY (submod u w Q) Q) Q
+    (mulmod TateTwoTY uMinusW Q) Q
   let line0Squared := mulmod line0 line0 Q
   let line0Fourth := mulmod line0Squared line0Squared Q
   mulmod line0Fourth (mulmod line1 line1 Q) Q
@@ -103,8 +103,8 @@ def tateMillerValue (p : Affine) : Nat :=
   let v := addmod 1 p.y Q
   let u := mulmod v p.x Q
   let w := mulmod (submod 1 p.y Q) p.x Q
-  let numerator := tateMillerNumerator u v w
   let uMinusW := submod u w Q
+  let numerator := tateMillerNumerator u v w uMinusW
   let uMinusWSquared := mulmod uMinusW uMinusW Q
   let denominator := mulmod (mulmod w (mulmod uMinusWSquared uMinusWSquared Q) Q) u Q
   let denominatorSquared := mulmod denominator denominator Q
