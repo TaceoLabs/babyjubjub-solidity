@@ -388,9 +388,11 @@ library BabyJubJub {
         return addmod(axx, yy, Q) == addmod(1, dxxyy, Q);
     }
 
-    /// @notice Checks if a point in affine form is in the sub-group with the same order as the scalarfield. This method assumes that the point is on the curve and the coordinates are reduced mod Q.
-    ///
-    /// @param p The affine point.
+    /// @notice Checks if a point in affine form is in the sub-group with the same order as the scalarfield.
+    /// @dev The point MUST be on the curve with both coordinates reduced mod Q (i.e., `isOnCurve(p)`
+    ///      must hold); the result is meaningless otherwise. Callers must verify this precondition
+    ///      before relying on the result.
+    /// @param p The affine point. Must satisfy `isOnCurve(p)`.
     /// @return True if the point is in the correct sub-subgroup, false otherwise.
     function isInCorrectSubgroupAssumingOnCurve(Affine calldata p) public pure returns (bool) {
         (uint256 x1, uint256 y1, uint256 z1) = _scalarMulInner(characteristic_bits(), 0, p.x, p.y);
@@ -398,11 +400,15 @@ library BabyJubJub {
     }
 
     /// @notice Checks prime-order subgroup membership using a reduced 8-Tate pairing.
-    /// @dev This method assumes that `p` is on the curve and that both coordinates are reduced modulo Q.
+    /// @dev The point MUST be on the curve with both coordinates reduced mod Q (i.e., `isOnCurve(p)`
+    ///      must hold); this precondition is safety-critical. Unlike
+    ///      `isInCorrectSubgroupAssumingOnCurve`, this check can accept points that are not on the
+    ///      curve, and it may revert (instead of returning false) for unreduced coordinates. Callers
+    ///      must verify the precondition before relying on the result.
     ///      The check uses the fact that Baby JubJub is cyclic of order 8*R and 8 divides Q-1. If T is
     ///      a point of order eight, the prime-order subgroup is exactly the kernel of P -> t_8(T, P).
     ///      The final field exponentiation is evaluated by the EVM modular-exponentiation precompile.
-    /// @param p The affine point.
+    /// @param p The affine point. Must satisfy `isOnCurve(p)`.
     /// @return True if the point is in the prime-order subgroup, false otherwise.
     function isInCorrectSubgroupAssumingOnCurveTate(Affine calldata p) public view returns (bool) {
         // The Edwards identity has no image under the affine Edwards-to-Montgomery map.
