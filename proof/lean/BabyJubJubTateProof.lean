@@ -90,10 +90,10 @@ def identity : Affine := { x := 0, y := 1 }
 
 /-- Exact transcription of `_tateMillerNumerator`. -/
 def tateMillerNumerator (u v w : Nat) : Nat :=
-  let line0 := addmod (addmod v (Q - mulmod TateTY w Q) Q)
-    (Q - mulmod TateTangent0 (addmod u (Q - mulmod TateTX w Q) Q) Q) Q
-  let line1 := addmod (addmod v (Q - mulmod TateTwoTY w Q) Q)
-    (Q - mulmod TateTwoTY (addmod u (Q - w) Q) Q) Q
+  let line0 := submod (submod v (mulmod TateTY w Q) Q)
+    (mulmod TateTangent0 (submod u (mulmod TateTX w Q) Q) Q) Q
+  let line1 := submod (submod v (mulmod TateTwoTY w Q) Q)
+    (mulmod TateTwoTY (submod u w Q) Q) Q
   let line0Squared := mulmod line0 line0 Q
   let line0Fourth := mulmod line0Squared line0Squared Q
   mulmod line0Fourth (mulmod line1 line1 Q) Q
@@ -102,9 +102,9 @@ def tateMillerNumerator (u v w : Nat) : Nat :=
 def tateMillerValue (p : Affine) : Nat :=
   let v := addmod 1 p.y Q
   let u := mulmod v p.x Q
-  let w := mulmod (addmod 1 (Q - p.y) Q) p.x Q
+  let w := mulmod (submod 1 p.y Q) p.x Q
   let numerator := tateMillerNumerator u v w
-  let uMinusW := addmod u (Q - w) Q
+  let uMinusW := submod u w Q
   let uMinusWSquared := mulmod uMinusW uMinusW Q
   let denominator := mulmod (mulmod w (mulmod uMinusWSquared uMinusWSquared Q) Q) u Q
   let denominatorSquared := mulmod denominator denominator Q

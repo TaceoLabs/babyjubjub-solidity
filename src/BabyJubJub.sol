@@ -412,7 +412,7 @@ library BabyJubJub {
     /// @return True if the point is in the prime-order subgroup, false otherwise.
     function isInCorrectSubgroupAssumingOnCurveTate(Affine calldata p) public view returns (bool) {
         // The Edwards identity has no image under the affine Edwards-to-Montgomery map.
-        if (p.x == 0 && p.y == 1) return true;
+        if (isIdentity(p)) return true;
         return _modExpPrecompile(_tateMillerValue(p.x, p.y), TATE_FINAL_EXPONENT, Q) == 1;
     }
 
@@ -662,14 +662,14 @@ library BabyJubJub {
         // Keeping the coordinates projective avoids a field inversion.
         uint256 v = addmod(1, y, Q);
         uint256 u = mulmod(v, x, Q);
-        uint256 w = mulmod(addmod(1, Q - y, Q), x, Q);
+        uint256 w = mulmod(_submod(1, y, Q), x, Q);
 
         uint256 numerator = _tateMillerNumerator(u, v, w);
 
         // The three-step Miller function is N/D with
         //   N = line(T)^4 * line([2]T)^2
         //   D = W * (U-W)^4 * U.
-        uint256 uMinusW = addmod(u, Q - w, Q);
+        uint256 uMinusW = _submod(u, w, Q);
         uint256 uMinusWSquared = mulmod(uMinusW, uMinusW, Q);
         uint256 denominator = mulmod(w, mulmod(uMinusWSquared, uMinusWSquared, Q), Q);
         denominator = mulmod(denominator, u, Q);
@@ -685,13 +685,13 @@ library BabyJubJub {
 
     function _tateMillerNumerator(uint256 u, uint256 v, uint256 w) private pure returns (uint256) {
         // Numerators of the tangent-line evaluations at T and [2]T.
-        uint256 line0 = addmod(v, Q - mulmod(TATE_T_Y, w, Q), Q);
-        uint256 uMinusTxW = addmod(u, Q - mulmod(TATE_T_X, w, Q), Q);
-        line0 = addmod(line0, Q - mulmod(TATE_TANGENT_0, uMinusTxW, Q), Q);
+        uint256 line0 = _submod(v, mulmod(TATE_T_Y, w, Q), Q);
+        uint256 uMinusTxW = _submod(u, mulmod(TATE_T_X, w, Q), Q);
+        line0 = _submod(line0, mulmod(TATE_TANGENT_0, uMinusTxW, Q), Q);
 
-        uint256 line1 = addmod(v, Q - mulmod(TATE_TWO_T_Y, w, Q), Q);
-        uint256 uMinusW = addmod(u, Q - w, Q);
-        line1 = addmod(line1, Q - mulmod(TATE_TWO_T_Y, uMinusW, Q), Q);
+        uint256 line1 = _submod(v, mulmod(TATE_TWO_T_Y, w, Q), Q);
+        uint256 uMinusW = _submod(u, w, Q);
+        line1 = _submod(line1, mulmod(TATE_TWO_T_Y, uMinusW, Q), Q);
 
         uint256 line0Squared = mulmod(line0, line0, Q);
         uint256 line0Fourth = mulmod(line0Squared, line0Squared, Q);
