@@ -183,6 +183,34 @@ theorem modExp_eq_pow_mod (base exponent modulus : Nat) :
               rw [Nat.pow_add, Nat.pow_add, Nat.pow_one]
             _ = base ^ exponent % modulus := by rw [← htwice, ← hexponent]
 
+theorem powMod_eq_pow_mod (a e : Nat) : powMod a e Q = a ^ e % Q := by
+  induction e with
+  | zero => rfl
+  | succ e ih =>
+      show mulmod (powMod a e Q) a Q = a ^ (e + 1) % Q
+      rw [mulmod, ih, Nat.pow_succ, Nat.mod_mul_mod]
+
+/-- The field inverse used by `specAdd`, computed by binary instead of linear
+exponentiation so that `native_decide` can evaluate specification additions. -/
+def fastInvQ (a : Nat) : Nat := modExp (a % Q) (Q - 2) Q
+
+theorem fastInvQ_eq_invQ (a : Nat) : fastInvQ a = invQ a := by
+  rw [fastInvQ, invQ, modExp_eq_pow_mod, powMod_eq_pow_mod]
+
+/-- `specAdd` with the inverse replaced by `fastInvQ`; extensionally equal and
+executable. -/
+def fastAdd (p₁ p₂ : Affine) : Affine :=
+  let xx := mulmod p₁.x p₂.x Q
+  let yy := mulmod p₁.y p₂.y Q
+  let dxy := mulmod D (mulmod xx yy Q) Q
+  { x := mulmod (addmod (mulmod p₁.x p₂.y Q) (mulmod p₁.y p₂.x Q) Q)
+                  (fastInvQ (addmod 1 dxy Q)) Q
+    y := mulmod (submod yy (mulmod A xx Q) Q)
+                  (fastInvQ (submod 1 dxy Q)) Q }
+
+theorem fastAdd_eq_specAdd (p₁ p₂ : Affine) : fastAdd p₁ p₂ = specAdd p₁ p₂ := by
+  simp [fastAdd, specAdd, fastInvQ_eq_invQ]
+
 def TateGeneratorValue : Nat :=
   19540430494807482326159819597004422086093766032135589407132600596362845576832
 
@@ -192,10 +220,19 @@ theorem full_generator_final_exponentiation :
 
 def smallRootPower (e : Nat) : Nat := TateGeneratorValue ^ e % Q
 
+/-- The load-bearing computation about `TateGeneratorValue`: among the eight
+exponent classes, only the zeroth power is one. -/
+theorem small_root_power_eq_one_iff :
+    ∀ e : μ8Exponent, smallRootPower e.val = 1 ↔ e = 0 := by
+  native_decide
+
 theorem tate_generator_has_exact_order_eight :
     smallRootPower 8 = 1 ∧ smallRootPower 1 ≠ 1 ∧
     smallRootPower 2 ≠ 1 ∧ smallRootPower 4 ≠ 1 := by
-  native_decide
+  refine ⟨by native_decide, ?_, ?_, ?_⟩
+  · exact fun h => absurd ((small_root_power_eq_one_iff ⟨1, by omega⟩).mp h) (by decide)
+  · exact fun h => absurd ((small_root_power_eq_one_iff ⟨2, by omega⟩).mp h) (by decide)
+  · exact fun h => absurd ((small_root_power_eq_one_iff ⟨4, by omega⟩).mp h) (by decide)
 
 def nonidentityTorsionPoints : List Affine :=
   [ { x := 4342719913949491028786768530115087822524712248835451589697801404893164183326
@@ -221,14 +258,40 @@ theorem concrete_check_rejects_all_nonidentity_torsion :
   rcases hp with rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
     unfold OnCurve <;> native_decide
 
+/-- `[8]P` under the complete affine specification addition law. -/
+def specTimesEight (p : Affine) : Affine :=
+  let p2 := specAdd p p
+  let p4 := specAdd p2 p2
+  specAdd p4 p4
+
+def fastTimesEight (p : Affine) : Affine :=
+  let p2 := fastAdd p p
+  let p4 := fastAdd p2 p2
+  fastAdd p4 p4
+
+theorem fastTimesEight_eq_specTimesEight (p : Affine) :
+    fastTimesEight p = specTimesEight p := by
+  simp [fastTimesEight, specTimesEight, fastAdd_eq_specAdd]
+
+/-- The hardcoded rejection witnesses are exactly nonidentity `8`-torsion
+points: `[8]P` is the identity while `P` is not.  This pins the list to the
+degenerate zero/pole classes of the Miller function instead of trusting the
+constants. -/
+theorem nonidentity_torsion_points_are_eight_torsion :
+    ∀ p ∈ nonidentityTorsionPoints,
+      p ≠ identity ∧ specTimesEight p = identity := by
+  intro p hp
+  simp [nonidentityTorsionPoints] at hp
+  rcases hp with rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
+    rw [← fastTimesEight_eq_specTimesEight] <;> native_decide
+
 def reducedTateCharacter (p : FullGroupPoint) : Nat :=
   smallRootPower (tateClass p).val
 
 theorem reduced_tate_character_eq_one_iff_prime_subgroup (p : FullGroupPoint) :
     reducedTateCharacter p = 1 ↔ InPrimeOrderSubgroup p := by
-  have hroot : ∀ e : μ8Exponent, smallRootPower e.val = 1 ↔ e = 0 := by
-    native_decide
-  rw [reducedTateCharacter, hroot, tateClass_eq_zero_iff_prime_subgroup]
+  rw [reducedTateCharacter, small_root_power_eq_one_iff,
+    tateClass_eq_zero_iff_prime_subgroup]
 
 theorem reduced_tate_character_eq_one_iff_canonical_order_check (p : FullGroupPoint) :
     reducedTateCharacter p = 1 ↔ canonicalOrderCheck p :=
@@ -247,7 +310,12 @@ model when `p` represents the discrete-log class `index`.
 birational map. A zero concrete Miller value occurs at a zero or pole in the
 chosen representative and is a nonidentity torsion point, hence cannot be in
 the prime-order subgroup. At every regular point, `pairing_character` is
-bilinearity/non-degeneracy specialized to the fixed order-eight point. -/
+bilinearity/non-degeneracy specialized to the fixed order-eight point.
+
+For general points these laws are the assumed pairing model; they are not
+derived here.  They are however satisfiable, and satisfied by exactly the
+pinned constants: see `identity_satisfies_encoding_laws` and
+`full_generator_satisfies_encoding_laws` below. -/
 structure TateEncodingLaws (p : Affine) (index : FullGroupPoint) : Prop where
   on_curve : OnCurve p
   identity_index : p = identity → index = fullGroupZero
@@ -284,5 +352,39 @@ theorem solidity_tate_accepts_iff_canonical_order_check
     solidityTateAccepts p ↔ canonicalOrderCheck index :=
   (solidity_tate_accepts_iff_prime_order_subgroup p index laws).trans
     (canonical_order_check_iff_prime_subgroup index).symm
+
+/-- `TateEncodingLaws` is satisfiable at the exceptional identity point. -/
+theorem identity_satisfies_encoding_laws :
+    TateEncodingLaws identity fullGroupZero :=
+  { on_curve := identity_on_curve
+    identity_index := fun _ => rfl
+    zero_value_not_prime := fun hne _ => absurd rfl hne
+    pairing_character := fun hne _ => absurd rfl hne }
+
+/-- The discrete-log index of the full-order generator with respect to
+itself. -/
+def fullGeneratorIndex : FullGroupPoint := ⟨1, by native_decide⟩
+
+theorem full_generator_not_identity : fullGenerator ≠ identity := by
+  native_decide
+
+theorem character_at_generator_index :
+    reducedTateCharacter fullGeneratorIndex = TateGeneratorValue := by
+  native_decide
+
+/-- Non-vacuity and constant-consistency witness for `TateEncodingLaws`: the
+full-order generator, at discrete-log index one, satisfies the laws.  The
+proof consumes the pinned Miller value and final exponentiation, so a wrong
+`TATE_*` constant fails this theorem and the build. -/
+theorem full_generator_satisfies_encoding_laws :
+    TateEncodingLaws fullGenerator fullGeneratorIndex :=
+  { on_curve := full_generator_on_curve
+    identity_index := fun h => absurd h full_generator_not_identity
+    zero_value_not_prime := fun _ hzero => by
+      rw [full_generator_miller_value, full_generator_final_exponentiation] at hzero
+      exact absurd hzero (by native_decide)
+    pairing_character := fun _ _ => by
+      rw [full_generator_miller_value, full_generator_final_exponentiation,
+        character_at_generator_index] }
 
 end BabyJubJub.TateProof
