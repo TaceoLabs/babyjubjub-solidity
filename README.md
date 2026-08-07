@@ -38,7 +38,8 @@ require(BabyJubJub.isOnCurve(point));
 require(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(point));
 ```
 
-The Tate-based check is `view` because it uses the EVM modular-exponentiation precompile at address `0x05`.
+The Tate-based check implements the method of [Koshelev, "Subgroup membership testing on elliptic curves via the Tate pairing", J. Cryptographic Engineering 13 (2023)](https://eprint.iacr.org/2022/037).
+It is `view` because it uses the EVM modular-exponentiation precompile at address `0x05`.
 On chains without this precompile it reverts with `ModExpPrecompileFailed` on every call. The original pure
 `isInCorrectSubgroupAssumingOnCurve` order-multiplication check remains available as a portable fallback that
 works on any EVM.

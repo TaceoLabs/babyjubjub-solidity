@@ -408,6 +408,8 @@ library BabyJubJub {
     ///      The check uses the fact that Baby JubJub is cyclic of order 8*R and 8 divides Q-1. If T is
     ///      a point of order eight, the prime-order subgroup is exactly the kernel of P -> t_8(T, P).
     ///      The final field exponentiation is evaluated by the EVM modular-exponentiation precompile.
+    ///      Reference: Koshelev, "Subgroup membership testing on elliptic curves via the Tate
+    ///      pairing", J. Cryptographic Engineering 13 (2023), https://eprint.iacr.org/2022/037.
     /// @param p The affine point. Must satisfy `isOnCurve(p)`.
     /// @return True if the point is in the prime-order subgroup, false otherwise.
     function isInCorrectSubgroupAssumingOnCurveTate(Affine calldata p) public view returns (bool) {
