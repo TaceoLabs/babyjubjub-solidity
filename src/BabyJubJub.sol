@@ -700,7 +700,7 @@ library BabyJubJub {
         return mulmod(line0Fourth, mulmod(line1, line1, Q), Q);
     }
 
-    function _tateMillerDenominator(uint256 u, uint256 w) private pure returns (uint256) {
+    function _tateMillerDenominator(uint256 u, uint256 w) internal pure returns (uint256) {
         // D = W * (U-W)^4 * U
         uint256 uMinusW = _submod(u, w, Q);
         uint256 uMinusWSquared = mulmod(uMinusW, uMinusW, Q);
