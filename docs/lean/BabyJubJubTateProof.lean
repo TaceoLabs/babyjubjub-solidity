@@ -15,6 +15,11 @@ namespace BabyJubJub.TateProof
 
 def CurveOrder : Nat := 8 * R
 
+/-- Discrete-log coordinates for `E(F_Q)`.  Modeling the group as `Fin (8*R)`
+bakes in that `E(F_Q)` is cyclic — a nontrivial, curve-specific hypothesis of
+the pairing criterion (it fails e.g. for Bandersnatch).  It holds for Baby
+JubJub: the ERC-2494 full-order generator has exact order `8*R`, and `16*R`
+exceeds the Hasse bound, so `8*R` is the full group order. -/
 abbrev FullGroupPoint := Fin CurveOrder
 abbrev μ8Exponent := Fin 8
 
@@ -284,6 +289,25 @@ theorem nonidentity_torsion_points_are_eight_torsion :
   simp [nonidentityTorsionPoints] at hp
   rcases hp with rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
     rw [← fastTimesEight_eq_specTimesEight] <;> native_decide
+
+/-- The contract base point `GEN_X/GEN_Y` is `[8]G`, i.e. a nonidentity point
+of the prime-order subgroup. -/
+theorem base_point_is_eight_times_full_generator :
+    specTimesEight fullGenerator = generator := by
+  rw [← fastTimesEight_eq_specTimesEight]
+  native_decide
+
+theorem base_point_not_identity : generator ≠ identity := by
+  native_decide
+
+/-- Acceptance witness at a concrete nonidentity prime-subgroup point.  The
+torsion rejections and the exact-order-eight theorem alone cannot detect a
+constant even-power normalization error in the `N * D^7` closed form (a factor
+`χ = h^c` with `c ∈ {2, 4, 6}` passes them while rejecting the whole prime
+subgroup); accepting the base point pins `χ = 1`. -/
+theorem base_point_accepted :
+    modExp (tateMillerValue generator) TateFinalExponent Q = 1 := by
+  native_decide
 
 def reducedTateCharacter (p : FullGroupPoint) : Nat :=
   smallRootPower (tateClass p).val

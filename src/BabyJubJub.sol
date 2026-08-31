@@ -19,8 +19,10 @@ library BabyJubJub {
 
     // Constants for the reduced 8-Tate pairing subgroup check. Baby JubJub is
     // birational to the Montgomery curve v^2 = u^3 + 168698*u^2 + u. The
-    // point T = [R]G below has order eight on that curve. TATE_TANGENT_0 is
-    // the tangent slope at T; the tangent slope at [2]T equals TATE_TWO_T_Y.
+    // point T = [R]G below has order eight on that curve, where G is the
+    // ERC-2494 full-order generator of order 8*R (not the order-R base point
+    // GEN_X/GEN_Y above). TATE_TANGENT_0 is the tangent slope at T; the
+    // tangent slope at [2]T equals TATE_TWO_T_Y.
     // TATE_FINAL_EXPONENT is the final exponent (Q - 1) / 8 of the reduced
     // 8-Tate pairing.
     uint256 private constant TATE_FINAL_EXPONENT =
@@ -411,13 +413,24 @@ library BabyJubJub {
     ///      a point of order eight, the prime-order subgroup is exactly the kernel of P -> t_8(T, P).
     ///      The final field exponentiation is evaluated by the EVM modular-exponentiation precompile.
     ///      Reference: Koshelev, "Subgroup membership testing on elliptic curves via the Tate
-    ///      pairing", J. Cryptographic Engineering 13 (2023), https://eprint.iacr.org/2022/037.
+    ///      pairing", J. Cryptographic Engineering 13 (2023), https://eprint.iacr.org/2022/037
+    ///      (its published Correction, JCEN 14 (2024), only concerns the extension-field case
+    ///      e ∤ q-1, which does not apply here since 8 | Q-1).
     /// @param p The affine point. Must satisfy `isOnCurve(p)`.
     /// @return True if the point is in the prime-order subgroup, false otherwise.
     function isInCorrectSubgroupAssumingOnCurveTate(Affine calldata p) public view returns (bool) {
         // The Edwards identity has no image under the affine Edwards-to-Montgomery map.
         if (isIdentity(p)) return true;
         return _modExpPrecompile(_tateMillerValue(p.x, p.y), TATE_FINAL_EXPONENT, Q) == 1;
+    }
+
+    /// @notice Validates an untrusted affine point: reduced coordinates, on the curve, and in the
+    ///         prime-order subgroup. Combines `isOnCurve` with the Tate-based subgroup check, whose
+    ///         result is meaningless on its own for points not known to be on the curve.
+    /// @param p The affine point.
+    /// @return True if the point is on the curve and in the prime-order subgroup, false otherwise.
+    function isValidPoint(Affine calldata p) public view returns (bool) {
+        return isOnCurve(p) && isInCorrectSubgroupAssumingOnCurveTate(p);
     }
 
     /// @notice Computes the lagrange coefficients for the provided party IDs (starting at zero) and the threshold of the secret-sharing. We expect callsite to check that. Importantly, this method will always return an array with length numPeers, where lagrange coefficient of party ID is on index in the array (with zero for not participating nodes). We need this because the nodes will access this array with their partyID.
@@ -677,8 +690,10 @@ library BabyJubJub {
         uint256 denominator = _tateMillerDenominator(u, w);
 
         // (N/D)^((Q-1)/8) = (N*D^7)^((Q-1)/8), since D^(Q-1) = 1.
-        // A zero denominator can only occur at a nonidentity torsion point under
-        // the on-curve assumption; returning zero correctly rejects those points.
+        // Under the on-curve assumption the Miller value can vanish (via a zero
+        // numerator or a zero denominator) only at nonidentity torsion points;
+        // returning zero correctly rejects those, matching the early-abort
+        // convention of Dai et al., https://eprint.iacr.org/2024/1790, Alg. 5.
         uint256 denominatorSquared = mulmod(denominator, denominator, Q);
         uint256 denominatorFourth = mulmod(denominatorSquared, denominatorSquared, Q);
         uint256 denominatorSeventh = mulmod(mulmod(denominatorFourth, denominatorSquared, Q), denominator, Q);
@@ -711,6 +726,9 @@ library BabyJubJub {
     function _modExpPrecompile(uint256 base, uint256 exponent, uint256 modulus) private view returns (uint256 result) {
         bool success;
         assembly ("memory-safe") {
+            // The input region past the free memory pointer is only used
+            // transiently within this block, so the pointer is not advanced;
+            // the result lands in the 0x00 scratch space.
             let input := mload(0x40)
             mstore(input, 0x20)
             mstore(add(input, 0x20), 0x20)
@@ -719,10 +737,9 @@ library BabyJubJub {
             mstore(add(input, 0x80), exponent)
             mstore(add(input, 0xa0), modulus)
 
-            success := staticcall(gas(), 0x05, input, 0xc0, input, 0x20)
+            success := staticcall(gas(), 0x05, input, 0xc0, 0x00, 0x20)
             success := and(success, eq(returndatasize(), 0x20))
-            result := mload(input)
-            mstore(0x40, add(input, 0xc0))
+            result := mload(0x00)
         }
         if (!success) revert ModExpPrecompileFailed();
     }
