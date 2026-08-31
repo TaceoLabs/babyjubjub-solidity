@@ -21,6 +21,8 @@ library BabyJubJub {
     // birational to the Montgomery curve v^2 = u^3 + 168698*u^2 + u. The
     // point T = [R]G below has order eight on that curve. TATE_TANGENT_0 is
     // the tangent slope at T; the tangent slope at [2]T equals TATE_TWO_T_Y.
+    // TATE_FINAL_EXPONENT is the final exponent (Q - 1) / 8 of the reduced
+    // 8-Tate pairing.
     uint256 private constant TATE_FINAL_EXPONENT =
         2736030358979909402780800718157159386068545550052004292962275523321976061952;
     uint256 private constant TATE_T_X = 19799329160503878365519859265345525785148473002902384773314932802961476726446;
@@ -657,6 +659,11 @@ library BabyJubJub {
         return _expmod(a, P - 2, P);
     }
 
+    /// @dev Evaluates the Miller function f_{8,T}(P) of the reduced 8-Tate
+    /// pairing, which in this setting reduces to
+    ///   N/D = line(T)^4 * line([2]T)^2 / (W * (U-W)^4 * U).
+    /// Returns N * D^7 = (N/D) * D^8, which agrees with N/D after the final
+    /// exponentiation by (Q-1)/8 since D^(Q-1) = 1.
     function _tateMillerValue(uint256 x, uint256 y) private pure returns (uint256) {
         // Projective Montgomery coordinates for
         //   u = (1+y)/(1-y), v = (1+y)/((1-y)*x):
@@ -666,15 +673,8 @@ library BabyJubJub {
         uint256 u = mulmod(v, x, Q);
         uint256 w = mulmod(_submod(1, y, Q), x, Q);
 
-        uint256 uMinusW = _submod(u, w, Q);
         uint256 numerator = _tateMillerNumerator(u, v, w);
-
-        // The three-step Miller function is N/D with
-        //   N = line(T)^4 * line([2]T)^2
-        //   D = W * (U-W)^4 * U.
-        uint256 uMinusWSquared = mulmod(uMinusW, uMinusW, Q);
-        uint256 denominator = mulmod(w, mulmod(uMinusWSquared, uMinusWSquared, Q), Q);
-        denominator = mulmod(denominator, u, Q);
+        uint256 denominator = _tateMillerDenominator(u, w);
 
         // (N/D)^((Q-1)/8) = (N*D^7)^((Q-1)/8), since D^(Q-1) = 1.
         // A zero denominator can only occur at a nonidentity torsion point under
@@ -698,6 +698,13 @@ library BabyJubJub {
         uint256 line0Squared = mulmod(line0, line0, Q);
         uint256 line0Fourth = mulmod(line0Squared, line0Squared, Q);
         return mulmod(line0Fourth, mulmod(line1, line1, Q), Q);
+    }
+
+    function _tateMillerDenominator(uint256 u, uint256 w) private pure returns (uint256) {
+        // D = W * (U-W)^4 * U
+        uint256 uMinusW = _submod(u, w, Q);
+        uint256 uMinusWSquared = mulmod(uMinusW, uMinusW, Q);
+        return mulmod(mulmod(w, mulmod(uMinusWSquared, uMinusWSquared, Q), Q), u, Q);
     }
 
     /// @dev Evaluates base^exponent mod modulus using the EVM precompile at address 0x05.
