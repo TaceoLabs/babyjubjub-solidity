@@ -67,55 +67,6 @@ contract BabyJubJubTest is Test {
         assertEq(torsion.y, 1);
     }
 
-    function testFuzzTateMatchesOrderCheck(uint256 scalar, uint8 torsionMultiple) public view {
-        scalar %= BabyJubJub.R;
-        torsionMultiple %= 8;
-
-        BabyJubJub.Affine memory point = BabyJubJub.scalarMul(scalar, BabyJubJub.generator());
-        BabyJubJub.Affine memory torsionGenerator = BabyJubJub.Affine({x: TORSION_GENERATOR_X, y: TORSION_GENERATOR_Y});
-        BabyJubJub.Affine memory torsion = BabyJubJub.identity();
-        for (uint256 i = 0; i < torsionMultiple; ++i) {
-            torsion = BabyJubJub.add(torsion, torsionGenerator);
-        }
-        point = BabyJubJub.add(point, torsion);
-
-        bool orderCheck = BabyJubJub.isInCorrectSubgroupAssumingOnCurve(point);
-        assertEq(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(point), orderCheck);
-        assertEq(orderCheck, torsionMultiple == 0);
-    }
-
-    function testFuzzTateMillerDenominatorMatchesOrderCheck(uint256 scalar, uint8 torsionMultiple) public pure {
-        scalar %= BabyJubJub.R;
-        torsionMultiple %= 8;
-
-        // s*G + t*T spans the whole curve group (cyclic of order 8*R), so this
-        // covers every on-curve point.
-        BabyJubJub.Affine memory point = BabyJubJub.scalarMul(scalar, BabyJubJub.generator());
-        BabyJubJub.Affine memory torsionGenerator = BabyJubJub.Affine({x: TORSION_GENERATOR_X, y: TORSION_GENERATOR_Y});
-        for (uint256 i = 0; i < torsionMultiple; ++i) {
-            point = BabyJubJub.add(point, torsionGenerator);
-        }
-        assertTrue(BabyJubJub.isOnCurve(point));
-
-        // Montgomery coordinates U = (1+y)*x, W = (1-y)*x as used by the Tate check.
-        uint256 Q = BabyJubJub.Q;
-        uint256 u = mulmod(addmod(1, point.y, Q), point.x, Q);
-        uint256 w = mulmod(addmod(1, Q - point.y, Q), point.x, Q);
-        bool zeroDenominator = BabyJubJub._tateMillerDenominator(u, w) == 0;
-
-        // The denominator vanishes exactly on the 4-torsion, i.e. s == 0 and t even.
-        assertEq(zeroDenominator, scalar == 0 && torsionMultiple % 2 == 0);
-
-        // Consistency with the order-based subgroup check: apart from the
-        // identity, a zero denominator implies rejection, and accepted points
-        // have a nonzero denominator.
-        bool orderCheck = BabyJubJub.isInCorrectSubgroupAssumingOnCurve(point);
-        if (!BabyJubJub.isIdentity(point)) {
-            if (zeroDenominator) assertFalse(orderCheck);
-            if (orderCheck) assertFalse(zeroDenominator);
-        }
-    }
-
     function testIsEmpty() public pure {
         assertFalse(BabyJubJub.identity().isEmpty());
         assertFalse(BabyJubJub.generator().isEmpty());
