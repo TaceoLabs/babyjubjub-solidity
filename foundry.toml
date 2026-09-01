@@ -4,6 +4,12 @@ out = "out"
 libs = ["dependencies"]
 solc_version = "0.8.24"
 
+[profile.default.fuzz]
+runs = 512
+
+[profile.ci.fuzz]
+runs = 5000
+
 [dependencies]
 forge-std = "1.15.0"
 
