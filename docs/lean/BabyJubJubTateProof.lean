@@ -94,33 +94,25 @@ theorem final_exponent_is_correct : 8 * TateFinalExponent = Q - 1 := by
 def identity : Affine := { x := 0, y := 1 }
 
 /-- The identity justifying the folded `line0` evaluation in
-`_tateMillerNumerator`: `TateTangent0 * TateTX - TateTY = TateTX (mod Q)`. -/
+`_tateMillerValue`: `TateTangent0 * TateTX - TateTY = TateTX (mod Q)`. -/
 theorem tangent_fold_identity :
     (TateTangent0 * TateTX) % Q = (TateTY + TateTX) % Q := by
   native_decide
 
-/-- Exact transcription of `_tateMillerNumerator`. -/
-def tateMillerNumerator (u v w : Nat) : Nat :=
-  let line0 := addmod (submod v (mulmod TateTangent0 u Q) Q) (mulmod TateTX w Q) Q
-  let line1 := submod v (mulmod TateTwoTY u Q) Q
-  let line0Squared := mulmod line0 line0 Q
-  let line0Fourth := mulmod line0Squared line0Squared Q
-  mulmod line0Fourth (mulmod line1 line1 Q) Q
-
-/-- Exact transcription of `_tateMillerValue`. -/
+/-- Exact transcription of `_tateMillerValue`, which returns `N * D^7`
+computed as `((line0 * D)^2 * line1 * D)^2 * D`. -/
 def tateMillerValue (p : Affine) : Nat :=
   let v := addmod 1 p.y Q
   let u := mulmod v p.x Q
   let w := mulmod (submod 1 p.y Q) p.x Q
+  let line0 := addmod (submod v (mulmod TateTangent0 u Q) Q) (mulmod TateTX w Q) Q
+  let line1 := submod v (mulmod TateTwoTY u Q) Q
   let uMinusW := submod u w Q
-  let numerator := tateMillerNumerator u v w
   let uMinusWSquared := mulmod uMinusW uMinusW Q
   let denominator := mulmod (mulmod w (mulmod uMinusWSquared uMinusWSquared Q) Q) u Q
-  let denominatorSquared := mulmod denominator denominator Q
-  let denominatorFourth := mulmod denominatorSquared denominatorSquared Q
-  let denominatorSeventh :=
-    mulmod (mulmod denominatorFourth denominatorSquared Q) denominator Q
-  mulmod numerator denominatorSeventh Q
+  let line0Denominator := mulmod line0 denominator Q
+  let inner := mulmod (mulmod (mulmod line0Denominator line0Denominator Q) line1 Q) denominator Q
+  mulmod (mulmod inner inner Q) denominator Q
 
 def fullGenerator : Affine :=
   { x := 995203441582195749578291179787384436505546430278305826713579947235728471134

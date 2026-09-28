@@ -447,17 +447,11 @@ $$
     f_{8,T}(P)=\frac ND.
 $$
 
-This is exactly the split used by `_tateMillerNumerator` and
-`_tateMillerValue`:
+This is exactly the split used by `_tateMillerValue` (`line0`, `line1` and
+`D` are computed explicitly; $N$ itself is never formed, see Section 7):
 
 ```solidity
-uint256 line0Squared = mulmod(line0, line0, Q);
-uint256 line0Fourth = mulmod(line0Squared, line0Squared, Q);
-uint256 numerator = mulmod(
-    line0Fourth,
-    mulmod(line1, line1, Q),
-    Q
-); // N = L0^4 * L1^2
+// N = L0^4 * L1^2 (only ever used inside N * D^7)
 
 uint256 uMinusW = _submod(u, w, Q); // U - W mod Q
 uint256 uMinusWSquared = mulmod(uMinusW, uMinusW, Q);
@@ -523,13 +517,16 @@ $$
     \left(\frac ND\right)^E=(ND^7)^E.
 $$
 
-It constructs $D^7=D^4D^2D$:
+Rather than forming $N$ and $D^7$ separately, it shares the squarings:
+
+$$
+    ND^7=L_0^4L_1^2D^7=\bigl((L_0D)^2L_1D\bigr)^2D.
+$$
 
 ```solidity
-uint256 denominatorSquared = D * D;
-uint256 denominatorFourth = denominatorSquared * denominatorSquared;
-uint256 denominatorSeventh = denominatorFourth * denominatorSquared * D;
-return N * denominatorSeventh;
+uint256 line0Denominator = line0 * D;
+uint256 inner = line0Denominator * line0Denominator * line1 * D;
+return inner * inner * D;
 ```
 
 All actual operations use `mulmod(..., Q)`.
