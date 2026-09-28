@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-09-28
+
+### 🚜 Refactor
+
+- Restructure the multiplications for `ND^7` to share squarings with the previous steps. (#10) ([01ada24](https://github.com/TaceoLabs/babyjubjub-solidity/commit/01ada24596306363885b5c3059484a7c17e2b68f))
+
 ## [1.1.0] - 2026-09-01
 
 ### ⛰️ Features
