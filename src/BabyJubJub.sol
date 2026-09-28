@@ -676,7 +676,8 @@ library BabyJubJub {
     /// pairing, which in this setting reduces to
     ///   N/D = line(T)^4 * line([2]T)^2 / (W * (U-W)^4 * U).
     /// Returns N * D^7 = (N/D) * D^8, which agrees with N/D after the final
-    /// exponentiation by (Q-1)/8 since D^(Q-1) = 1.
+    /// exponentiation by (Q-1)/8 since D^(Q-1) = 1. The product is computed
+    /// as ((line0 * D)^2 * line1 * D)^2 * D to share the squarings.
     function _tateMillerValue(uint256 x, uint256 y) private pure returns (uint256) {
         // Projective Montgomery coordinates for
         //   u = (1+y)/(1-y), v = (1+y)/((1-y)*x):
@@ -686,21 +687,6 @@ library BabyJubJub {
         uint256 u = mulmod(v, x, Q);
         uint256 w = mulmod(_submod(1, y, Q), x, Q);
 
-        uint256 numerator = _tateMillerNumerator(u, v, w);
-        uint256 denominator = _tateMillerDenominator(u, w);
-
-        // (N/D)^((Q-1)/8) = (N*D^7)^((Q-1)/8), since D^(Q-1) = 1.
-        // Under the on-curve assumption the Miller value can vanish (via a zero
-        // numerator or a zero denominator) only at nonidentity torsion points;
-        // returning zero correctly rejects those, matching the early-abort
-        // convention of Dai et al., https://eprint.iacr.org/2024/1790, Alg. 5.
-        uint256 denominatorSquared = mulmod(denominator, denominator, Q);
-        uint256 denominatorFourth = mulmod(denominatorSquared, denominatorSquared, Q);
-        uint256 denominatorSeventh = mulmod(mulmod(denominatorFourth, denominatorSquared, Q), denominator, Q);
-        return mulmod(numerator, denominatorSeventh, Q);
-    }
-
-    function _tateMillerNumerator(uint256 u, uint256 v, uint256 w) private pure returns (uint256) {
         // Numerators of the tangent-line evaluations at T and [2]T, folded
         // using TATE_TANGENT_0 * TATE_T_X - TATE_T_Y == TATE_T_X (mod Q):
         //   line0 = v - TATE_T_Y*w - TATE_TANGENT_0*(u - TATE_T_X*w)
@@ -709,10 +695,16 @@ library BabyJubJub {
         //         = v - TATE_TWO_T_Y*u
         uint256 line0 = addmod(_submod(v, mulmod(TATE_TANGENT_0, u, Q), Q), mulmod(TATE_T_X, w, Q), Q);
         uint256 line1 = _submod(v, mulmod(TATE_TWO_T_Y, u, Q), Q);
+        uint256 denominator = _tateMillerDenominator(u, w);
 
-        uint256 line0Squared = mulmod(line0, line0, Q);
-        uint256 line0Fourth = mulmod(line0Squared, line0Squared, Q);
-        return mulmod(line0Fourth, mulmod(line1, line1, Q), Q);
+        // (N/D)^((Q-1)/8) = (N*D^7)^((Q-1)/8), since D^(Q-1) = 1.
+        // Under the on-curve assumption the Miller value can vanish (via a zero
+        // numerator or a zero denominator) only at nonidentity torsion points;
+        // returning zero correctly rejects those, matching the early-abort
+        // convention of Dai et al., https://eprint.iacr.org/2024/1790, Alg. 5.
+        uint256 line0Denominator = mulmod(line0, denominator, Q);
+        uint256 inner = mulmod(mulmod(mulmod(line0Denominator, line0Denominator, Q), line1, Q), denominator, Q);
+        return mulmod(mulmod(inner, inner, Q), denominator, Q);
     }
 
     function _tateMillerDenominator(uint256 u, uint256 w) internal pure returns (uint256) {
