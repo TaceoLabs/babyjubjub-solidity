@@ -61,7 +61,7 @@ library BabyJubJub {
     /// @param lhs The point on the left hand side.
     /// @param rhs The point on the right hand side.
     /// @return res The resulting point
-    function add(Affine calldata lhs, Affine calldata rhs) public view returns (Affine memory res) {
+    function add(Affine calldata lhs, Affine calldata rhs) public pure returns (Affine memory res) {
         // Handle identity cases
         if (isIdentity(lhs)) {
             res = rhs;
@@ -191,7 +191,7 @@ library BabyJubJub {
     /// @return lagrange The requested lagrange coefficients
     function computeLagrangeCoefficiants(uint256[] calldata ids, uint256 threshold, uint256 numPeers)
         public
-        view
+        pure
         returns (uint256[] memory lagrange)
     {
         // should be checked at callsite
@@ -227,7 +227,7 @@ library BabyJubJub {
     /// @param scalar The scalar for the multiplication.
     /// @param p The affine point.
     /// @return The resulting affine point.
-    function scalarMul(uint256 scalar, Affine calldata p) public view returns (Affine memory) {
+    function scalarMul(uint256 scalar, Affine calldata p) public pure returns (Affine memory) {
         require(scalar < R);
         if (scalar == 0) {
             return identity();
@@ -331,7 +331,7 @@ library BabyJubJub {
     /// @param z1 The z-coordinate of the projective point.
     ///
     /// @return res The affine point
-    function _toAffine(uint256 x1, uint256 y1, uint256 z1) private view returns (Affine memory res) {
+    function _toAffine(uint256 x1, uint256 y1, uint256 z1) private pure returns (Affine memory res) {
         // The projective point X, Y, Z is represented in the affine coordinates as X/Z, Y/Z.
         if (x1 == 0 && y1 == z1 && y1 != 1) {
             res.x = 0;
@@ -353,8 +353,15 @@ library BabyJubJub {
     }
 
     /// @dev Computes a^(P-2) mod P via the modexp precompile. Returns 0 for a == 0.
-    function _modInverse(uint256 a, uint256 P) private view returns (uint256) {
-        return _modExpPrecompile(a, P - 2, P);
+    /// The precompile is deterministic, so the call is exposed as `pure` by casting the
+    /// internal function pointer; `staticcall` itself is not allowed in `pure` functions.
+    function _modInverse(uint256 a, uint256 P) private pure returns (uint256) {
+        function(uint256, uint256, uint256) view returns (uint256) v = _modExpPrecompile;
+        function(uint256, uint256, uint256) pure returns (uint256) f;
+        assembly ("memory-safe") {
+            f := v
+        }
+        return f(a, P - 2, P);
     }
 
     /// @dev Evaluates the Miller function f_{8,T}(P) of the reduced 8-Tate
