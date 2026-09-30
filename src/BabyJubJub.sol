@@ -43,263 +43,6 @@ library BabyJubJub {
         uint256 y;
     }
 
-    /// @notice Returns the bits of the characteristic of the scalarfield in big-endian order.
-    function characteristic_bits() private pure returns (uint8[251] memory) {
-        return [
-            1,
-            1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            1,
-            1,
-            0,
-            0,
-            1,
-            1,
-            1,
-            0,
-            0,
-            1,
-            0,
-            1,
-            1,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            1,
-            0,
-            0,
-            0,
-            1,
-            1,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            1,
-            0,
-            0,
-            1,
-            1,
-            0,
-            1,
-            1,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            1,
-            0,
-            1,
-            1,
-            0,
-            1,
-            1,
-            0,
-            1,
-            1,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            1,
-            0,
-            1,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            1,
-            1,
-            1,
-            0,
-            1,
-            0,
-            1,
-            0,
-            1,
-            1,
-            0,
-            0,
-            1,
-            1,
-            1,
-            1,
-            1,
-            0,
-            1,
-            1,
-            1,
-            0,
-            1,
-            1,
-            0,
-            1,
-            1,
-            0,
-            1,
-            1,
-            1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            1,
-            1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            1,
-            1,
-            0,
-            1,
-            1,
-            1,
-            0,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            1,
-            0,
-            0,
-            1,
-            1,
-            0,
-            0,
-            1,
-            1,
-            1,
-            0,
-            1,
-            1,
-            1,
-            0,
-            0,
-            1,
-            0,
-            1,
-            0,
-            0,
-            1,
-            0,
-            1,
-            1,
-            1,
-            1,
-            1,
-            0,
-            1,
-            1,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-            1,
-            1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            0,
-            0,
-            1,
-            1,
-            0,
-            1,
-            1,
-            1,
-            1,
-            0,
-            0,
-            0,
-            1
-        ];
-    }
-
     /// @notice Returns the identity.
     function identity() public pure returns (Affine memory p) {
         p.x = 0;
@@ -402,7 +145,7 @@ library BabyJubJub {
     /// @param p The affine point. Must satisfy `isOnCurve(p)`.
     /// @return True if the point is in the correct sub-subgroup, false otherwise.
     function isInCorrectSubgroupAssumingOnCurve(Affine calldata p) public pure returns (bool) {
-        (uint256 x1, uint256 y1, uint256 z1) = _scalarMulInner(characteristic_bits(), 0, p.x, p.y);
+        (uint256 x1, uint256 y1, uint256 z1) = _scalarMulInner(R, p.x, p.y);
         return x1 == 0 && y1 == z1 && p.y != 0;
     }
 
@@ -489,91 +232,95 @@ library BabyJubJub {
         if (scalar == 0) {
             return identity();
         }
-        (uint8[251] memory bits, uint256 highBit) = _getBits(scalar);
-        (uint256 x1, uint256 y1, uint256 z1) = _scalarMulInner(bits, highBit, p.x, p.y);
+        (uint256 x1, uint256 y1, uint256 z1) = _scalarMulInner(scalar, p.x, p.y);
         return _toAffine(x1, y1, z1);
     }
 
-    /// @notice Internal helper function for scalar point multiplication. Performs the actual double-and-add scalar-multiplication. The highBit parameter allows to skip the leading zeroes.
+    /// @notice Internal helper for scalar point multiplication. Left-to-right double-and-add over the
+    /// bits of `scalar` in extended twisted Edwards coordinates, starting at the highest set bit.
+    /// Written in assembly to keep the ~250 iterations on the stack (no memory bit array, no tuple returns).
     ///
-    /// @param bits The scalar in big-endian order. *Attention* does NO alias checking as this is used internally.
-    /// @param highBit The index of the "first" 1. Used to skip the leading zeroes.
+    /// This method expects that the point is on the curve and in the correct subgroup. Additionally, the method expects that the coordinates are reduced mod Q. The outputs are also reduced mod Q.
+    ///
+    /// @param scalar The scalar. Must be nonzero (callers handle zero).
     /// @param x The x-coordinate of the affine point reduced mod Q
     /// @param y The y-coordinate of the affine point reduced mod Q
     ///
-    /// This method expects that the point is on the curve and in the correct subgroup. Additionally, the method expects that the coordinates are reduced mod Q. The outputs are also reduced mod Q.
-    function _scalarMulInner(uint8[251] memory bits, uint256 highBit, uint256 x, uint256 y)
+    /// @return x_res The projective x-coordinate of the result.
+    /// @return y_res The projective y-coordinate of the result.
+    /// @return z_res The projective z-coordinate of the result.
+    function _scalarMulInner(uint256 scalar, uint256 x, uint256 y)
         private
         pure
         returns (uint256 x_res, uint256 y_res, uint256 z_res)
     {
-        x_res = 0;
-        y_res = 1;
-        uint256 t_res = 0;
-        z_res = 1;
-        // skip leading zeros
-        for (uint256 i = highBit; i < 251; ++i) {
-            (x_res, y_res, t_res, z_res) = _doubleTwistedEdwards(x_res, y_res, z_res);
-            if (bits[i] == 1) {
-                (x_res, y_res, t_res, z_res) = _addProjective(x_res, y_res, t_res, z_res, x, y);
+        assembly ("memory-safe") {
+            // The helpers below reuse their return slots as temporaries and read the fixed base
+            // point from scratch memory, so that the legacy code generator stays within stack limits.
+            // Additions without mod are safe: all operands are reduced mod Q (254 bits), so sums fit
+            // in 255 bits; a - b is computed as a + (Q - b) mod Q.
+
+            // Doubling, "Twisted Edwards Curves Revisited" (Hisil, Wong, Carter, Dawson), 3.3 Doubling in E^e
+            // https://www.hyperelliptic.org/EFD/g1p/data/twisted/extended/doubling/dbl-2008-hwcd
+            function dbl(x1, y1, z1) -> x3, y3, t3, z3 {
+                let a := mulmod(x1, x1, Q)
+                let b := mulmod(y1, y1, Q)
+                // E = (X1+Y1)^2 - A - B
+                x3 := add(x1, y1)
+                x3 := addmod(mulmod(x3, x3, Q), sub(Q, addmod(a, b, Q)), Q)
+                // D = a*A
+                a := mulmod(a, A, Q)
+                // G = D + B
+                y3 := add(a, b)
+                // F = G - C, C = 2*Z1^2
+                z3 := addmod(y3, sub(Q, mulmod(mul(2, z1), z1, Q)), Q)
+                // H = D - B
+                a := addmod(a, sub(Q, b), Q)
+                t3 := mulmod(x3, a, Q)
+                b := mulmod(y3, a, Q)
+                x3 := mulmod(x3, z3, Q)
+                z3 := mulmod(z3, y3, Q)
+                y3 := b
+            }
+
+            // Mixed addition with the affine point (mload(0x00), mload(0x20)), ibid. 3.1 Unified Addition in E^e
+            // https://www.hyperelliptic.org/EFD/g1p/data/twisted/extended/addition/madd-2008-hwcd
+            function madd(x1, y1, t1, z1) -> x3, y3, t3, z3 {
+                let a := mulmod(x1, mload(0x00), Q)
+                let b := mulmod(y1, mload(0x20), Q)
+                // C = T1*d*X2*Y2
+                x3 := mulmod(mulmod(mulmod(D, t1, Q), mload(0x00), Q), mload(0x20), Q)
+                // E = (X1+Y1)*(X2+Y2) - A - B
+                t3 := addmod(mulmod(add(x1, y1), add(mload(0x00), mload(0x20)), Q), sub(Q, addmod(a, b, Q)), Q)
+                // F = Z1 - C
+                y3 := addmod(z1, sub(Q, x3), Q)
+                // G = Z1 + C
+                z3 := add(z1, x3)
+                // H = B - a*A
+                a := addmod(b, sub(Q, mulmod(A, a, Q)), Q)
+                x3 := mulmod(t3, y3, Q)
+                b := mulmod(z3, a, Q)
+                t3 := mulmod(t3, a, Q)
+                z3 := mulmod(y3, z3, Q)
+                y3 := b
+            }
+
+            mstore(0x00, x)
+            mstore(0x20, y)
+            // accumulator (X:Y:T:Z) = identity
+            x_res := 0
+            y_res := 1
+            let t := 0
+            z_res := 1
+            let i := 255
+            for {} iszero(and(shr(i, scalar), 1)) {} { i := sub(i, 1) }
+            for {} 1 {} {
+                x_res, y_res, t, z_res := dbl(x_res, y_res, z_res)
+                if and(shr(i, scalar), 1) { x_res, y_res, t, z_res := madd(x_res, y_res, t, z_res) }
+                if iszero(i) { break }
+                i := sub(i, 1)
             }
         }
-        return (x_res, y_res, z_res);
-    }
-
-    /// @notice A+B, where A and B are points on the BabyJubJub curve with the difference that A represented with projective coordinates and B with affine coordinates. Returns A+B in projective form.
-    /// This method expects that the point is on the curve and in the correct subgroup. Additionally, the method expects that the coordinates are reduced mod Q. The outputs are also reduced mod Q.
-    ///
-    /// @param x1 The x-coordinate of the projective point reduced mod Q.
-    /// @param y1 The y-coordinate of the projective point reduced mod Q.
-    /// @param t1 The t-coordinate of the projective point reduced mod Q.
-    /// @param z1 The z-coordinate of the projective point reduced mod Q.
-    /// @param x2 The x-coordinate of the affine point reduced mod Q.
-    /// @param y2 The y-coordinate of the affine point reduced mod Q.
-    ///
-    /// @return x_res The x-coordinate of A+B reduced mod Q.
-    /// @return y_res The y-coordinate of A+B reduced mod Q.
-    /// @return t_res The t-coordinate of A+B reduced mod Q.
-    /// @return z_res The z-coordinate of A+B reduced mod Q.
-    function _addProjective(uint256 x1, uint256 y1, uint256 t1, uint256 z1, uint256 x2, uint256 y2)
-        private
-        pure
-        returns (uint256 x_res, uint256 y_res, uint256 t_res, uint256 z_res)
-    {
-        // See "Twisted Edwards Curves Revisited"
-        // Huseyin Hisil, Kenneth Koon-Ho Wong, Gary Carter, and Ed Dawson
-        // 3.1 Unified Addition in E^e
-        // Source: https://www.hyperelliptic.org/EFD/g1p/data/twisted/extended/addition/madd-2008-hwcd
-
-        // A = X1*X2
-        uint256 a = mulmod(x1, x2, Q);
-        // B = Y1*Y2
-        uint256 b = mulmod(y1, y2, Q);
-        // C = T1*d*X2*Y2
-        uint256 c = mulmod(mulmod(mulmod(D, t1, Q), x2, Q), y2, Q);
-        // D = Z1
-        uint256 d = z1;
-        // E = (X1+Y1)*(X2+Y2)-A-B
-        // SAFETY: can add without mod because Q is 254 bits and we expect point to be on the curve
-        uint256 x1y1 = x1 + y1;
-        // SAFETY: can add without mod because Q is 254 bits and we expect point to be on the curve
-        uint256 x2y2 = x2 + y2;
-        uint256 e = _submod(_submod(mulmod(x1y1, x2y2, Q), a, Q), b, Q);
-        // F = D-C
-        uint256 f = _submod(d, c, Q);
-        // G = D+C
-        // SAFETY: can add without mod because Q is 254 bits and we expect point to be on the curve
-        uint256 g = d + c;
-        // H = B-a*A
-        uint256 h = _submod(b, mulmod(A, a, Q), Q);
-        // X3 = E*F
-        x_res = mulmod(e, f, Q);
-        // Y3 = G*H
-        y_res = mulmod(g, h, Q);
-        // T3 = E*H
-        t_res = mulmod(e, h, Q);
-        // Z3 = F*G
-        z_res = mulmod(f, g, Q);
     }
 
     /// @notice Converts a point P on the BabyJubJub curve in projective form to its affine form.
@@ -599,72 +346,6 @@ library BabyJubJub {
             res.x = mulmod(x1, z_inv, Q);
             res.y = mulmod(y1, z_inv, Q);
         }
-    }
-
-    ///Helper function for scalarMul(scalar, x, y). Bit-decomposes the provided value in big-endian form and returns the index of the highest bit (to skip leading zeros). Ignores highest five bits as this should only be used for scalar mul and the scalarfield only has 251 bits.
-    function _getBits(uint256 value) private pure returns (uint8[251] memory bits, uint256 highBit) {
-        // set high bit to 256 -> cannot happen as we only go up to 251 bits and if all zeroes, will return 256.
-        highBit = 256;
-        value <<= 5;
-        for (uint256 i = 0; i < 251; i++) {
-            uint256 shift = 255 - i;
-            bits[i] = uint8((value >> shift) & 1);
-            if (bits[i] == 1 && highBit == 256) {
-                highBit = i;
-            }
-        }
-    }
-
-    /// @notice Performs point-doubling of a BabyJubJub projective point in twisted-edwards form.
-    /// This method expects that the point is on the curve and in the correct subgroup. Additionally, the method expects that the coordinates are reduced mod Q. The outputs are also reduced mod Q.
-    ///
-    /// @param x The x-coordinate of the projective point reduced mod Q.
-    /// @param y The y-coordinate of the projective point reduced mod Q.
-    /// @param z The z-coordinate of the projective point reduced mod Q.
-    ///
-    /// @param x3 The x-coordinate of the doubled point reduced mod Q.
-    /// @param y3 The y-coordinate of the doubled point reduced mod Q.
-    /// @param t3 The t-coordinate of the doubled point reduced mod Q.
-    /// @param z3 The z-coordinate of the doubled point reduced mod Q.
-    function _doubleTwistedEdwards(uint256 x, uint256 y, uint256 z)
-        private
-        pure
-        returns (uint256 x3, uint256 y3, uint256 t3, uint256 z3)
-    {
-        // See "Twisted Edwards Curves Revisited"
-        // Huseyin Hisil, Kenneth Koon-Ho Wong, Gary Carter, and Ed Dawson
-        // 3.3 Doubling in E^e
-        // Source: https://www.hyperelliptic.org/EFD/g1p/data/twisted/extended/doubling/dbl-2008-hwcd
-
-        // A = X1^2
-        uint256 a = mulmod(x, x, Q);
-        // B = Y1^2
-        uint256 b = mulmod(y, y, Q);
-        // C = 2 * Z1^2
-        // SAFETY: can write the 2 * z without mod because Q is 254 bits and we expect a valid point here.
-        uint256 c = mulmod(2 * z, z, Q);
-        // D = a * A
-        uint256 d = mulmod(a, A, Q);
-        // E = (X1 + Y1)^2 - A - B
-        // SAFETY: can add without mod because Q is 254 bits
-        uint256 x1y1 = x + y;
-        uint256 x1y12 = mulmod(x1y1, x1y1, Q);
-        uint256 e = _submod(_submod(x1y12, a, Q), b, Q);
-        // G = D + B
-        // SAFETY: can add without mod because Q is 254 bits
-        uint256 g = d + b;
-        // F = G - C
-        uint256 f = _submod(g, c, Q);
-        // H = D - B
-        uint256 h = _submod(d, b, Q);
-        // X3 = E * F
-        x3 = mulmod(e, f, Q);
-        // Y3 = G * H
-        y3 = mulmod(g, h, Q);
-        // T3 = E * H
-        t3 = mulmod(e, h, Q);
-        // Z3 = F * G
-        z3 = mulmod(f, g, Q);
     }
 
     function _submod(uint256 a, uint256 b, uint256 m) private pure returns (uint256) {
