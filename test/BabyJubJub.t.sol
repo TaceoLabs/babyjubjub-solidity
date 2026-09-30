@@ -80,7 +80,7 @@ contract BabyJubJubTest is Test {
         assertTrue(BabyJubJub.isEqual(BabyJubJub.identity(), BabyJubJub.identity()));
     }
 
-    function doSingleLagrangeCheckDeg1(uint8[2] memory ins, uint256[3] memory should) private pure {
+    function doSingleLagrangeCheckDeg1(uint8[2] memory ins, uint256[3] memory should) private view {
         uint256[] memory cast = new uint256[](2);
         uint256[] memory shouldResult = new uint256[](3);
         for (uint256 i = 0; i < 2; ++i) {
@@ -93,7 +93,7 @@ contract BabyJubJubTest is Test {
         assertEq(isResult, shouldResult);
     }
 
-    function doSingleLagrangeCheckDeg2(uint8[3] memory ins, uint256[5] memory should) private pure {
+    function doSingleLagrangeCheckDeg2(uint8[3] memory ins, uint256[5] memory should) private view {
         uint256[] memory cast = new uint256[](3);
         uint256[] memory shouldResult = new uint256[](5);
         for (uint256 i = 0; i < 3; ++i) {
@@ -106,7 +106,7 @@ contract BabyJubJubTest is Test {
         assertEq(isResult, shouldResult);
     }
 
-    function testLagrangeCoeffsDegree2() public pure {
+    function testLagrangeCoeffsDegree2() public view {
         doSingleLagrangeCheckDeg1(
             [0, 1], [2, 2736030358979909402780800718157159386076813972158567259200215660948447373040, 0]
         );
@@ -137,7 +137,7 @@ contract BabyJubJubTest is Test {
         );
     }
 
-    function testLagrangeCoeffsDegree3() public pure {
+    function testLagrangeCoeffsDegree3() public view {
         doSingleLagrangeCheckDeg2(
             [0, 1, 2], [3, 2736030358979909402780800718157159386076813972158567259200215660948447373038, 1, 0, 0]
         );
@@ -166,20 +166,20 @@ contract BabyJubJubTest is Test {
         );
     }
 
-    function testAddIdentity() public pure {
+    function testAddIdentity() public view {
         BabyJubJub.Affine memory p = BabyJubJub.add(BabyJubJub.identity(), BabyJubJub.generator());
         assertEq(p.x, BabyJubJub.GEN_X);
         assertEq(p.y, BabyJubJub.GEN_Y);
     }
 
-    function testAddGeneratorToItself() public pure {
+    function testAddGeneratorToItself() public view {
         BabyJubJub.Affine memory p = BabyJubJub.add(BabyJubJub.generator(), BabyJubJub.generator());
         assertTrue(BabyJubJub.isOnCurve(p));
         assertEq(p.x, TWO_G_X);
         assertEq(p.y, TWO_G_Y);
     }
 
-    function testThreeTimes() public pure {
+    function testThreeTimes() public view {
         // 2*Generator by adding generator to itself
         BabyJubJub.Affine memory twoG = BabyJubJub.add(BabyJubJub.generator(), BabyJubJub.generator());
         assertTrue(BabyJubJub.isOnCurve(twoG));
@@ -196,7 +196,7 @@ contract BabyJubJubTest is Test {
         assertEq(threeG.y, THREE_G_Y);
     }
 
-    function testScalarMul() public pure {
+    function testScalarMul() public view {
         uint256 scalar0 = 0;
         BabyJubJub.Affine memory point0 = BabyJubJub.Affine({x: 0, y: 1});
 
