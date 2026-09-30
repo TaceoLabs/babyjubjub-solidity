@@ -318,7 +318,7 @@ library BabyJubJub {
     /// @param lhs The point on the left hand side.
     /// @param rhs The point on the right hand side.
     /// @return res The resulting point
-    function add(Affine calldata lhs, Affine calldata rhs) public pure returns (Affine memory res) {
+    function add(Affine calldata lhs, Affine calldata rhs) public view returns (Affine memory res) {
         // Handle identity cases
         if (isIdentity(lhs)) {
             res = rhs;
@@ -347,8 +347,11 @@ library BabyJubJub {
         uint256 y3Num = _submod(y1y2, mulmod(A, x1x2, Q), Q);
         uint256 y3Den = _submod(1, dx1x2y1y2, Q);
 
-        res.x = mulmod(x3Num, _modInverse(x3Den, Q), Q);
-        res.y = mulmod(y3Num, _modInverse(y3Den, Q), Q);
+        // Batch the two inversions: inv(x3Den * y3Den) yields both inverses with one modexp call.
+        // Both denominators are nonzero for on-curve inputs since the curve is complete.
+        uint256 invDen = _modInverse(mulmod(x3Den, y3Den, Q), Q);
+        res.x = mulmod(x3Num, mulmod(invDen, y3Den, Q), Q);
+        res.y = mulmod(y3Num, mulmod(invDen, x3Den, Q), Q);
     }
 
     /// @notice Checks if an affine point is the identity element.
@@ -445,7 +448,7 @@ library BabyJubJub {
     /// @return lagrange The requested lagrange coefficients
     function computeLagrangeCoefficiants(uint256[] calldata ids, uint256 threshold, uint256 numPeers)
         public
-        pure
+        view
         returns (uint256[] memory lagrange)
     {
         // should be checked at callsite
@@ -481,7 +484,7 @@ library BabyJubJub {
     /// @param scalar The scalar for the multiplication.
     /// @param p The affine point.
     /// @return The resulting affine point.
-    function scalarMul(uint256 scalar, Affine calldata p) public pure returns (Affine memory) {
+    function scalarMul(uint256 scalar, Affine calldata p) public view returns (Affine memory) {
         require(scalar < R);
         if (scalar == 0) {
             return identity();
@@ -581,7 +584,7 @@ library BabyJubJub {
     /// @param z1 The z-coordinate of the projective point.
     ///
     /// @return res The affine point
-    function _toAffine(uint256 x1, uint256 y1, uint256 z1) private pure returns (Affine memory res) {
+    function _toAffine(uint256 x1, uint256 y1, uint256 z1) private view returns (Affine memory res) {
         // The projective point X, Y, Z is represented in the affine coordinates as X/Z, Y/Z.
         if (x1 == 0 && y1 == z1 && y1 != 1) {
             res.x = 0;
@@ -668,8 +671,9 @@ library BabyJubJub {
         return (a >= b) ? (a - b) : m - (b - a);
     }
 
-    function _modInverse(uint256 a, uint256 P) private pure returns (uint256) {
-        return _expmod(a, P - 2, P);
+    /// @dev Computes a^(P-2) mod P via the modexp precompile. Returns 0 for a == 0.
+    function _modInverse(uint256 a, uint256 P) private view returns (uint256) {
+        return _modExpPrecompile(a, P - 2, P);
     }
 
     /// @dev Evaluates the Miller function f_{8,T}(P) of the reduced 8-Tate
@@ -734,17 +738,5 @@ library BabyJubJub {
             result := mload(0x00)
         }
         if (!success) revert ModExpPrecompileFailed();
-    }
-
-    function _expmod(uint256 base, uint256 e, uint256 m) private pure returns (uint256 result) {
-        result = 1;
-        base = base % m;
-        while (e > 0) {
-            if (e & 1 == 1) {
-                result = mulmod(result, base, m);
-            }
-            base = mulmod(base, base, m);
-            e = e >> 1;
-        }
     }
 }
