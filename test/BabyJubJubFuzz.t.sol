@@ -27,7 +27,7 @@ contract BabyJubJubFuzzTest is Test {
 
     /// @dev The curve group is cyclic of order 8*R, so s*G + t*T (t in 0..7)
     /// reaches every on-curve point.
-    function _pointFromSeed(uint256 s, uint8 t) private pure returns (BabyJubJub.Affine memory point) {
+    function _pointFromSeed(uint256 s, uint8 t) private view returns (BabyJubJub.Affine memory point) {
         s %= BabyJubJub.R;
         t %= 8;
         point = BabyJubJub.scalarMul(s, BabyJubJub.generator());
@@ -37,7 +37,7 @@ contract BabyJubJubFuzzTest is Test {
         }
     }
 
-    function _subgroupPointFromSeed(uint256 s) private pure returns (BabyJubJub.Affine memory) {
+    function _subgroupPointFromSeed(uint256 s) private view returns (BabyJubJub.Affine memory) {
         return BabyJubJub.scalarMul(s % BabyJubJub.R, BabyJubJub.generator());
     }
 
@@ -50,33 +50,33 @@ contract BabyJubJubFuzzTest is Test {
     // A. group law
     // ---------------------------------------------------------------------
 
-    function testFuzzAddCommutative(uint256 sp, uint256 sq) public pure {
+    function testFuzzAddCommutative(uint256 sp, uint256 sq) public view {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         BabyJubJub.Affine memory q = _subgroupPointFromSeed(sq);
         _assertPointEq(BabyJubJub.add(p, q), BabyJubJub.add(q, p));
     }
 
-    function testFuzzAddAssociative(uint256 sp, uint256 sq, uint256 ss) public pure {
+    function testFuzzAddAssociative(uint256 sp, uint256 sq, uint256 ss) public view {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         BabyJubJub.Affine memory q = _subgroupPointFromSeed(sq);
         BabyJubJub.Affine memory s = _subgroupPointFromSeed(ss);
         _assertPointEq(BabyJubJub.add(BabyJubJub.add(p, q), s), BabyJubJub.add(p, BabyJubJub.add(q, s)));
     }
 
-    function testFuzzAddIdentityIsNoop(uint256 sp) public pure {
+    function testFuzzAddIdentityIsNoop(uint256 sp) public view {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         BabyJubJub.Affine memory identity = BabyJubJub.identity();
         _assertPointEq(BabyJubJub.add(p, identity), p);
         _assertPointEq(BabyJubJub.add(identity, p), p);
     }
 
-    function testFuzzAddInverse(uint256 sp) public pure {
+    function testFuzzAddInverse(uint256 sp) public view {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         BabyJubJub.Affine memory sum = BabyJubJub.add(p, _negate(p));
         _assertPointEq(sum, BabyJubJub.identity());
     }
 
-    function testFuzzAddClosedOverSubgroup(uint256 sp, uint256 sq) public pure {
+    function testFuzzAddClosedOverSubgroup(uint256 sp, uint256 sq) public view {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         BabyJubJub.Affine memory q = _subgroupPointFromSeed(sq);
         BabyJubJub.Affine memory sum = BabyJubJub.add(p, q);
@@ -84,7 +84,7 @@ contract BabyJubJubFuzzTest is Test {
         assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(sum));
     }
 
-    function testFuzzAddSelfMatchesScalarMulTwo(uint256 sp) public pure {
+    function testFuzzAddSelfMatchesScalarMulTwo(uint256 sp) public view {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         _assertPointEq(BabyJubJub.add(p, p), BabyJubJub.scalarMul(2, p));
     }
@@ -93,22 +93,22 @@ contract BabyJubJubFuzzTest is Test {
     // B. scalar multiplication
     // ---------------------------------------------------------------------
 
-    function testFuzzScalarMulZeroIsIdentity(uint256 sp) public pure {
+    function testFuzzScalarMulZeroIsIdentity(uint256 sp) public view {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         _assertPointEq(BabyJubJub.scalarMul(0, p), BabyJubJub.identity());
     }
 
-    function testFuzzScalarMulOneIsNoop(uint256 sp) public pure {
+    function testFuzzScalarMulOneIsNoop(uint256 sp) public view {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         _assertPointEq(BabyJubJub.scalarMul(1, p), p);
     }
 
-    function testFuzzScalarMulMaxScalarIsNegation(uint256 sp) public pure {
+    function testFuzzScalarMulMaxScalarIsNegation(uint256 sp) public view {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         _assertPointEq(BabyJubJub.scalarMul(BabyJubJub.R - 1, p), _negate(p));
     }
 
-    function testFuzzScalarMulAdditiveHomomorphism(uint256 sp, uint256 a, uint256 b) public pure {
+    function testFuzzScalarMulAdditiveHomomorphism(uint256 sp, uint256 a, uint256 b) public view {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         a %= BabyJubJub.R;
         b %= BabyJubJub.R;
@@ -117,7 +117,7 @@ contract BabyJubJubFuzzTest is Test {
         _assertPointEq(lhs, rhs);
     }
 
-    function testFuzzScalarMulMultiplicativeHomomorphism(uint256 sp, uint256 a, uint256 b) public pure {
+    function testFuzzScalarMulMultiplicativeHomomorphism(uint256 sp, uint256 a, uint256 b) public view {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         a %= BabyJubJub.R;
         b %= BabyJubJub.R;
@@ -126,7 +126,7 @@ contract BabyJubJubFuzzTest is Test {
         _assertPointEq(lhs, rhs);
     }
 
-    function testFuzzScalarMulClosedOverSubgroup(uint256 sp, uint256 scalar) public pure {
+    function testFuzzScalarMulClosedOverSubgroup(uint256 sp, uint256 scalar) public view {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         BabyJubJub.Affine memory result = BabyJubJub.scalarMul(scalar % BabyJubJub.R, p);
         assertTrue(BabyJubJub.isOnCurve(result));
@@ -142,7 +142,7 @@ contract BabyJubJubFuzzTest is Test {
 
     function scalarMulExternal(uint256 scalar, BabyJubJub.Affine calldata p)
         external
-        pure
+        view
         returns (BabyJubJub.Affine memory)
     {
         return BabyJubJub.scalarMul(scalar, p);
@@ -226,7 +226,7 @@ contract BabyJubJubFuzzTest is Test {
         uint256 numPeersSeed,
         uint256 thresholdSeed,
         uint256 coeffSeed
-    ) public pure {
+    ) public view {
         uint256 R = BabyJubJub.R;
         uint256 numPeers = bound(numPeersSeed, 2, 10);
         uint256 threshold = bound(thresholdSeed, 1, numPeers);
@@ -264,7 +264,7 @@ contract BabyJubJubFuzzTest is Test {
 
     function testFuzzLagrangeNonParticipantsAreZero(uint256 seed, uint256 numPeersSeed, uint256 thresholdSeed)
         public
-        pure
+        view
     {
         uint256 numPeers = bound(numPeersSeed, 2, 10);
         uint256 threshold = bound(thresholdSeed, 1, numPeers);
