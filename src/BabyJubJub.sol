@@ -310,18 +310,18 @@ library BabyJubJub {
             mstore(0x00, x)
             mstore(0x20, y)
             let dxy := mulmod(mulmod(D, x, Q), y, Q)
-            // accumulator (X:Y:T:Z) = identity
-            x_res := 0
-            y_res := 1
-            let t := 0
-            z_res := 1
+            // Find the highest set bit; it is consumed by starting the accumulator at (x : y : x*y : 1).
+            // Requires scalar != 0: otherwise `i` underflows and this scan never terminates.
             let i := 255
             for {} iszero(and(shr(i, scalar), 1)) {} { i := sub(i, 1) }
-            for {} 1 {} {
+            x_res := x
+            y_res := y
+            let t := mulmod(x, y, Q)
+            z_res := 1
+            for {} i {} {
+                i := sub(i, 1)
                 x_res, y_res, t, z_res := dbl(x_res, y_res, z_res)
                 if and(shr(i, scalar), 1) { x_res, y_res, t, z_res := madd(x_res, y_res, t, z_res, dxy) }
-                if iszero(i) { break }
-                i := sub(i, 1)
             }
         }
     }
