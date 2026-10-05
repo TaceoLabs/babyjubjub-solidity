@@ -2,6 +2,9 @@
 cache/
 out/
 
+# Local differential fuzzer
+/fuzzy_tests/
+
 # Soldeer dependencies
 dependencies/
 
