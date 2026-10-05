@@ -286,13 +286,14 @@ library BabyJubJub {
 
             // Mixed addition with the affine point (mload(0x00), mload(0x20)), ibid. 3.1 Unified Addition in E^e
             // https://www.hyperelliptic.org/EFD/g1p/data/twisted/extended/addition/madd-2008-hwcd
-            function madd(x1, y1, t1, z1) -> x3, y3, t3, z3 {
+            // `dxy` = d*X2*Y2 is loop-invariant and precomputed by the caller.
+            function madd(x1, y1, t1, z1, dxy) -> x3, y3, t3, z3 {
                 let xx := mulmod(x1, mload(0x00), Q)
                 let yy := mulmod(y1, mload(0x20), Q)
                 // C = T1*d*X2*Y2
-                x3 := mulmod(mulmod(mulmod(D, t1, Q), mload(0x00), Q), mload(0x20), Q)
-                // E = (X1+Y1)*(X2+Y2) - A - B
-                t3 := addmod(mulmod(add(x1, y1), add(mload(0x00), mload(0x20)), Q), sub(Q, addmod(xx, yy, Q)), Q)
+                x3 := mulmod(t1, dxy, Q)
+                // E = (X1+Y1)*(X2+Y2) - A - B = X1*Y2 + Y1*X2
+                t3 := addmod(mulmod(x1, mload(0x20), Q), mulmod(y1, mload(0x00), Q), Q)
                 // F = Z1 - C
                 y3 := addmod(z1, sub(Q, x3), Q)
                 // G = Z1 + C
@@ -308,6 +309,7 @@ library BabyJubJub {
 
             mstore(0x00, x)
             mstore(0x20, y)
+            let dxy := mulmod(mulmod(D, x, Q), y, Q)
             // accumulator (X:Y:T:Z) = identity
             x_res := 0
             y_res := 1
@@ -317,7 +319,7 @@ library BabyJubJub {
             for {} iszero(and(shr(i, scalar), 1)) {} { i := sub(i, 1) }
             for {} 1 {} {
                 x_res, y_res, t, z_res := dbl(x_res, y_res, z_res)
-                if and(shr(i, scalar), 1) { x_res, y_res, t, z_res := madd(x_res, y_res, t, z_res) }
+                if and(shr(i, scalar), 1) { x_res, y_res, t, z_res := madd(x_res, y_res, t, z_res, dxy) }
                 if iszero(i) { break }
                 i := sub(i, 1)
             }
