@@ -9,8 +9,6 @@ cliff.toml
 dependencies/
 /docs/
 /fuzzy_tests/
-/lean/
-/proof/
 soldeer.lock
 soljson-latest.js
 test/
