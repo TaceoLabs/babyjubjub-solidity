@@ -262,47 +262,48 @@ library BabyJubJub {
 
             // Doubling, "Twisted Edwards Curves Revisited" (Hisil, Wong, Carter, Dawson), 3.3 Doubling in E^e
             // https://www.hyperelliptic.org/EFD/g1p/data/twisted/extended/doubling/dbl-2008-hwcd
+            // Paper names in comments; `A` and `D` in code are the curve constants.
             function dbl(x1, y1, z1) -> x3, y3, t3, z3 {
-                let a := mulmod(x1, x1, Q)
-                let b := mulmod(y1, y1, Q)
+                let xx := mulmod(x1, x1, Q)
+                let yy := mulmod(y1, y1, Q)
                 // E = (X1+Y1)^2 - A - B
                 x3 := add(x1, y1)
-                x3 := addmod(mulmod(x3, x3, Q), sub(Q, addmod(a, b, Q)), Q)
+                x3 := addmod(mulmod(x3, x3, Q), sub(Q, addmod(xx, yy, Q)), Q)
                 // D = a*A
-                a := mulmod(a, A, Q)
+                xx := mulmod(xx, A, Q)
                 // G = D + B
-                y3 := add(a, b)
+                y3 := add(xx, yy)
                 // F = G - C, C = 2*Z1^2
                 z3 := addmod(y3, sub(Q, mulmod(mul(2, z1), z1, Q)), Q)
                 // H = D - B
-                a := addmod(a, sub(Q, b), Q)
-                t3 := mulmod(x3, a, Q)
-                b := mulmod(y3, a, Q)
+                xx := addmod(xx, sub(Q, yy), Q)
+                t3 := mulmod(x3, xx, Q)
+                yy := mulmod(y3, xx, Q)
                 x3 := mulmod(x3, z3, Q)
                 z3 := mulmod(z3, y3, Q)
-                y3 := b
+                y3 := yy
             }
 
             // Mixed addition with the affine point (mload(0x00), mload(0x20)), ibid. 3.1 Unified Addition in E^e
             // https://www.hyperelliptic.org/EFD/g1p/data/twisted/extended/addition/madd-2008-hwcd
             function madd(x1, y1, t1, z1) -> x3, y3, t3, z3 {
-                let a := mulmod(x1, mload(0x00), Q)
-                let b := mulmod(y1, mload(0x20), Q)
+                let xx := mulmod(x1, mload(0x00), Q)
+                let yy := mulmod(y1, mload(0x20), Q)
                 // C = T1*d*X2*Y2
                 x3 := mulmod(mulmod(mulmod(D, t1, Q), mload(0x00), Q), mload(0x20), Q)
                 // E = (X1+Y1)*(X2+Y2) - A - B
-                t3 := addmod(mulmod(add(x1, y1), add(mload(0x00), mload(0x20)), Q), sub(Q, addmod(a, b, Q)), Q)
+                t3 := addmod(mulmod(add(x1, y1), add(mload(0x00), mload(0x20)), Q), sub(Q, addmod(xx, yy, Q)), Q)
                 // F = Z1 - C
                 y3 := addmod(z1, sub(Q, x3), Q)
                 // G = Z1 + C
                 z3 := add(z1, x3)
                 // H = B - a*A
-                a := addmod(b, sub(Q, mulmod(A, a, Q)), Q)
+                xx := addmod(yy, sub(Q, mulmod(A, xx, Q)), Q)
                 x3 := mulmod(t3, y3, Q)
-                b := mulmod(z3, a, Q)
-                t3 := mulmod(t3, a, Q)
+                yy := mulmod(z3, xx, Q)
+                t3 := mulmod(t3, xx, Q)
                 z3 := mulmod(y3, z3, Q)
-                y3 := b
+                y3 := yy
             }
 
             mstore(0x00, x)
