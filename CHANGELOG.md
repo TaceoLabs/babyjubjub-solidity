@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-10-07
+
+### 🚜 Refactor
+
+- Rename assembly locals that shadowed curve constants ([b32c2a6](https://github.com/TaceoLabs/babyjubjub-solidity/commit/b32c2a6fef1263ec89a790c50436ff04c18c4cf6))
+
+### ⚡ Performance
+
+- Use the modexp precompile for field inversions (#13) ([783862d](https://github.com/TaceoLabs/babyjubjub-solidity/commit/783862db9fd02fb83717fdcf5669ec4f70b8ef77))
+- Rewrite scalar multiplication core in assembly ([048ad67](https://github.com/TaceoLabs/babyjubjub-solidity/commit/048ad6791064374b763c31ba7cfae2d482d5186c))
+- Hoist the loop-invariant d*X2*Y2 out of the mixed addition ([bbcfd4c](https://github.com/TaceoLabs/babyjubjub-solidity/commit/bbcfd4ce48959168fdcbe87c8e48b7bacaa13d60))
+- Seed the scalar multiplication accumulator with the base point ([ee35a67](https://github.com/TaceoLabs/babyjubjub-solidity/commit/ee35a676507bfebe87267172488667a476ec0b41))
+
 ## [1.2.0] - 2026-09-28
 
 ### 🚜 Refactor
