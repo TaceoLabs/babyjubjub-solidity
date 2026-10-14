@@ -15,14 +15,14 @@ forge install TaceoLabs/babyjubjub-solidity
 Using [Soldeer](https://soldeer.xyz):
 
 ```bash
-forge soldeer install babyjubjub-solidity~1.2.0
+forge soldeer install babyjubjub-solidity~1.3.0
 ```
 
 Or add it to your `foundry.toml`:
 
 ```toml
 [dependencies]
-babyjubjub-solidity = "1.2.0"
+babyjubjub-solidity = "1.3.0"
 ```
 
 ## Usage
@@ -57,7 +57,7 @@ Add one of the following to your `remappings.txt`, depending on how you installe
 @taceo/babyjubjub/=lib/babyjubjub-solidity/src/
 
 # Soldeer
-@taceo/babyjubjub/=dependencies/babyjubjub-solidity-1.2.0/src/
+@taceo/babyjubjub/=dependencies/babyjubjub-solidity-1.3.0/src/
 ```
 
 ## Development
