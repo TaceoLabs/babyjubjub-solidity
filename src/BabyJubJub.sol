@@ -6,6 +6,8 @@ pragma solidity ^0.8.15;
 library BabyJubJub {
     // BN254 scalar field = BabyJubJub base field
     uint256 public constant Q = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
+    // Q2 = 2 * Q, used for intermediate calculations to avoid overflow
+    uint256 private constant Q2 = 43776485743678550444492811490514550177096728800832068687396408373151616991234;
 
     // BabyJubJub scalar field
     uint256 public constant R = 2736030358979909402780800718157159386076813972158567259200215660948447373041;
@@ -257,8 +259,9 @@ library BabyJubJub {
         assembly ("memory-safe") {
             // The helpers below reuse their return slots as temporaries and read the fixed base
             // point from scratch memory, so that the legacy code generator stays within stack limits.
-            // Additions without mod are safe: all operands are reduced mod Q (254 bits), so sums fit
-            // in 255 bits; a - b is computed as a + (Q - b) mod Q.
+            // Lazy reduction: all helper inputs are canonical (outputs of mulmod), and the intermediates
+            // E, F, G, H are only consumed by mulmod, which accepts any 256-bit operand. They are therefore
+            // left unreduced in [0, 3Q); a - b is computed as a + Q - b. Q is 254 bits, so nothing wraps.
 
             // Doubling, "Twisted Edwards Curves Revisited" (Hisil, Wong, Carter, Dawson), 3.3 Doubling in E^e
             // https://www.hyperelliptic.org/EFD/g1p/data/twisted/extended/doubling/dbl-2008-hwcd
@@ -268,15 +271,15 @@ library BabyJubJub {
                 let yy := mulmod(y1, y1, Q)
                 // E = (X1+Y1)^2 - A - B
                 x3 := add(x1, y1)
-                x3 := addmod(mulmod(x3, x3, Q), sub(Q, addmod(xx, yy, Q)), Q)
+                x3 := sub(sub(add(mulmod(x3, x3, Q), Q2), xx), yy)
                 // D = a*A
                 xx := mulmod(xx, A, Q)
                 // G = D + B
                 y3 := add(xx, yy)
                 // F = G - C, C = 2*Z1^2
-                z3 := addmod(y3, sub(Q, mulmod(mul(2, z1), z1, Q)), Q)
+                z3 := sub(add(y3, Q), mulmod(mul(2, z1), z1, Q))
                 // H = D - B
-                xx := addmod(xx, sub(Q, yy), Q)
+                xx := sub(add(xx, Q), yy)
                 t3 := mulmod(x3, xx, Q)
                 yy := mulmod(y3, xx, Q)
                 x3 := mulmod(x3, z3, Q)
@@ -293,13 +296,13 @@ library BabyJubJub {
                 // C = T1*d*X2*Y2
                 x3 := mulmod(t1, dxy, Q)
                 // E = (X1+Y1)*(X2+Y2) - A - B = X1*Y2 + Y1*X2
-                t3 := addmod(mulmod(x1, mload(0x20), Q), mulmod(y1, mload(0x00), Q), Q)
+                t3 := add(mulmod(x1, mload(0x20), Q), mulmod(y1, mload(0x00), Q))
                 // F = Z1 - C
-                y3 := addmod(z1, sub(Q, x3), Q)
+                y3 := sub(add(z1, Q), x3)
                 // G = Z1 + C
                 z3 := add(z1, x3)
                 // H = B - a*A
-                xx := addmod(yy, sub(Q, mulmod(A, xx, Q)), Q)
+                xx := sub(add(yy, Q), mulmod(A, xx, Q))
                 x3 := mulmod(t3, y3, Q)
                 yy := mulmod(z3, xx, Q)
                 t3 := mulmod(t3, xx, Q)
