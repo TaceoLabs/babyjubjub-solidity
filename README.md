@@ -15,14 +15,14 @@ forge install TaceoLabs/babyjubjub-solidity
 Using [Soldeer](https://soldeer.xyz):
 
 ```bash
-forge soldeer install babyjubjub-solidity~1.2.0
+forge soldeer install babyjubjub-solidity~1.4.0
 ```
 
 Or add it to your `foundry.toml`:
 
 ```toml
 [dependencies]
-babyjubjub-solidity = "1.2.0"
+babyjubjub-solidity = "1.4.0"
 ```
 
 ## Usage
@@ -57,7 +57,7 @@ Add one of the following to your `remappings.txt`, depending on how you installe
 @taceo/babyjubjub/=lib/babyjubjub-solidity/src/
 
 # Soldeer
-@taceo/babyjubjub/=dependencies/babyjubjub-solidity-1.2.0/src/
+@taceo/babyjubjub/=dependencies/babyjubjub-solidity-1.4.0/src/
 ```
 
 ## Development
@@ -70,7 +70,5 @@ forge test
 ## Security
 
 This library has been audited part of an larger audit. Since then we extracted this as a library to better use it in other projects.
-
-Note: the Tate-pairing subgroup check (`isInCorrectSubgroupAssumingOnCurveTate`) was added after these audits and is not part of the audited surface. It is instead accompanied by a Lean proof in `docs/lean`: the Solidity arithmetic transcription, all fixed constants, torsion rejection, and the group theory are machine-checked, while standard Tate-pairing facts (bilinearity, non-degeneracy) enter as explicitly stated model assumptions — see `docs/lean/README.md` for the exact trust boundary.
 
 Audit reports can be found in `/audits`.
