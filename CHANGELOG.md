@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-10-28
+
+### 🚜 Refactor
+
+- Use non-modular additions to save gas where no overflows can occur ([d0ae694](https://github.com/TaceoLabs/babyjubjub-solidity/commit/d0ae69429051af872bef1984eae81d6a15c2bf70))
+
+### 📚 Documentation
+
+- Add report for subgroup checks and follow-up optimizations ([a50208c](https://github.com/TaceoLabs/babyjubjub-solidity/commit/a50208c08069dc8e9a51db5076ee01c3682a2d34))
+
 ## [1.3.0] - 2026-10-07
 
 ### 🚜 Refactor
