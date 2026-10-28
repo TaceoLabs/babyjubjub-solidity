@@ -315,6 +315,8 @@ library BabyJubJub {
             let dxy := mulmod(mulmod(D, x, Q), y, Q)
             // Find the highest set bit; it is consumed by starting the accumulator at (x : y : x*y : 1).
             // Requires scalar != 0: otherwise `i` underflows and this scan never terminates.
+            // Could be `sub(255, clz(scalar))` (EIP-7939), but that requires solc >= 0.8.31 targeting Osaka;
+            // not done yet to avoid bumping the compiler and EVM version for a ~290 gas gain on valid scalars.
             let i := 255
             for {} iszero(and(shr(i, scalar), 1)) {} { i := sub(i, 1) }
             x_res := x
