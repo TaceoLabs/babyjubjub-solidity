@@ -22,25 +22,25 @@ contract BabyJubJubTest is Test {
 
     function setUp() public {}
 
-    function testIdentityPoint() public pure {
+    /// @dev Reference subgroup check by order multiplication: [R]p == identity.
+    function _orderCheck(BabyJubJub.Affine memory p) private view returns (bool) {
+        BabyJubJub.Affine memory rp = BabyJubJub.add(BabyJubJub.scalarMul(BabyJubJub.R - 1, p), p);
+        return rp.x == 0 && rp.y == 1;
+    }
+
+    function testIdentityPoint() public view {
         assertTrue(BabyJubJub.isOnCurve(BabyJubJub.identity()));
-        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(BabyJubJub.identity()));
-    }
-
-    function testGeneratorOnCurve() public pure {
-        assertTrue(BabyJubJub.isOnCurve(BabyJubJub.generator()));
-        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(BabyJubJub.generator()));
-    }
-
-    function testTateIdentityAndGenerator() public view {
         assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(BabyJubJub.identity()));
+    }
+
+    function testGeneratorOnCurve() public view {
+        assertTrue(BabyJubJub.isOnCurve(BabyJubJub.generator()));
         assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(BabyJubJub.generator()));
     }
 
     function testTateRejectsFullOrderGenerator() public view {
         BabyJubJub.Affine memory fullGenerator = BabyJubJub.Affine({x: FULL_GENERATOR_X, y: FULL_GENERATOR_Y});
         assertTrue(BabyJubJub.isOnCurve(fullGenerator));
-        assertFalse(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(fullGenerator));
         assertFalse(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(fullGenerator));
     }
 
@@ -52,12 +52,12 @@ contract BabyJubJubTest is Test {
             bool expected = i == 0;
 
             assertTrue(BabyJubJub.isOnCurve(torsion));
-            assertEq(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(torsion), expected);
+            assertEq(_orderCheck(torsion), expected);
             assertEq(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(torsion), expected);
 
             BabyJubJub.Affine memory mixed = BabyJubJub.add(BabyJubJub.generator(), torsion);
             assertTrue(BabyJubJub.isOnCurve(mixed));
-            assertEq(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(mixed), expected);
+            assertEq(_orderCheck(mixed), expected);
             assertEq(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(mixed), expected);
 
             torsion = BabyJubJub.add(torsion, torsionGenerator);
@@ -183,13 +183,13 @@ contract BabyJubJubTest is Test {
         // 2*Generator by adding generator to itself
         BabyJubJub.Affine memory twoG = BabyJubJub.add(BabyJubJub.generator(), BabyJubJub.generator());
         assertTrue(BabyJubJub.isOnCurve(twoG));
-        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(twoG));
+        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(twoG));
 
         // Add generator + 2*generator to get 3*generator
         BabyJubJub.Affine memory threeG = BabyJubJub.add(BabyJubJub.generator(), twoG);
 
         assertTrue(BabyJubJub.isOnCurve(threeG));
-        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(threeG));
+        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(threeG));
 
         // Result should be different from both G and 2G
         assertEq(threeG.x, THREE_G_X);
@@ -237,7 +237,7 @@ contract BabyJubJubTest is Test {
         assertEq(kat8.y, 7586271879783443543166246816922473256134012536615268324850965019989201082300);
     }
 
-    function testCurveChecks() public pure {
+    function testCurveChecks() public view {
         BabyJubJub.Affine memory notOnCurve = BabyJubJub.Affine({x: 42, y: 42});
         assertFalse(BabyJubJub.isOnCurve(notOnCurve));
 
@@ -247,7 +247,7 @@ contract BabyJubJubTest is Test {
         BabyJubJub.Affine memory twoTorsion =
             BabyJubJub.Affine({x: 0, y: 21888242871839275222246405745257275088548364400416034343698204186575808495616});
         assertTrue(BabyJubJub.isOnCurve(twoTorsion));
-        assertFalse(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(twoTorsion));
+        assertFalse(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(twoTorsion));
 
         BabyJubJub.Affine memory kat1 = BabyJubJub.Affine({
             x: 8375249795494070168540398175218576938320513942163892031567097533429205888430,
@@ -265,12 +265,12 @@ contract BabyJubJubTest is Test {
         });
 
         assertTrue(BabyJubJub.isOnCurve(kat1));
-        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(kat1));
+        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(kat1));
 
         assertTrue(BabyJubJub.isOnCurve(kat2));
-        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(kat2));
+        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(kat2));
 
         assertTrue(BabyJubJub.isOnCurve(kat3));
-        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(kat3));
+        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(kat3));
     }
 }

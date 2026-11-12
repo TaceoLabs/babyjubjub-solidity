@@ -1,7 +1,7 @@
 # Lean proof
 
 `BabyJubJubProof.lean` is a dependency-free Lean 4 refinement proof of the
-arithmetic in `src/BabyJubJub.sol`. It proves:
+arithmetic in `src/BabyJubJubCore.sol`. It proves:
 
 - the affine formula is the standard twisted-Edwards addition formula;
 - mixed extended-projective addition and doubling refine their modular-field
@@ -30,8 +30,8 @@ arithmetic in `src/BabyJubJub.sol`. It proves:
   Solidity predicate accepts exactly prime-order-subgroup points;
 - `solidity_tate_accepts_iff_canonical_order_check` proves the new predicate
   equivalent to the canonical `[R]P = 0` order check, stated abstractly in
-  discrete-log coordinates (`canonicalOrderCheck`); the deployed
-  `isInCorrectSubgroupAssumingOnCurve` double-and-add loop itself is not
+  discrete-log coordinates (`canonicalOrderCheck`); the double-and-add loop of the former
+  `isInCorrectSubgroupAssumingOnCurve` check (removed from the library) is not
   modeled.
 
 Run it with:

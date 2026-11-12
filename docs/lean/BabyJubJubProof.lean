@@ -1,7 +1,7 @@
 import Std.Tactic
 
 /-!
-A refinement proof for `src/BabyJubJub.sol`.
+A refinement proof for `src/BabyJubJubCore.sol`.
 
 The EVM words accepted by the public curve operations are required by their API
 to be canonical field representatives.  We model EVM `addmod` and `mulmod`
