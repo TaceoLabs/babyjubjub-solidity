@@ -2,7 +2,7 @@ import BabyJubJubProof
 
 /-!
 Refinement and group-theoretic proof for the reduced 8-Tate subgroup check in
-`src/BabyJubJub.sol`.
+`src/BabyJubJubCore.sol`.
 
 The concrete section transcribes the Solidity Miller-function arithmetic and
 checks its fixed constants.  The abstract section proves that the kernel of a

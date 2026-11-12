@@ -81,7 +81,7 @@ contract BabyJubJubFuzzTest is Test {
         BabyJubJub.Affine memory q = _subgroupPointFromSeed(sq);
         BabyJubJub.Affine memory sum = BabyJubJub.add(p, q);
         assertTrue(BabyJubJub.isOnCurve(sum));
-        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(sum));
+        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(sum));
     }
 
     function testFuzzAddSelfMatchesScalarMulTwo(uint256 sp) public view {
@@ -130,7 +130,7 @@ contract BabyJubJubFuzzTest is Test {
         BabyJubJub.Affine memory p = _subgroupPointFromSeed(sp);
         BabyJubJub.Affine memory result = BabyJubJub.scalarMul(scalar % BabyJubJub.R, p);
         assertTrue(BabyJubJub.isOnCurve(result));
-        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurve(result));
+        assertTrue(BabyJubJub.isInCorrectSubgroupAssumingOnCurveTate(result));
     }
 
     function testFuzzScalarMulRevertsOnOutOfRangeScalar(uint256 sp, uint256 scalar) public {

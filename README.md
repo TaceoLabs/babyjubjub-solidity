@@ -46,9 +46,24 @@ on its own for points not known to be on the curve, so never skip the `isOnCurve
 The Tate-based check implements the method of [Koshelev, "Subgroup membership testing on elliptic curves via the Tate pairing", J. Cryptographic Engineering 13 (2023)](https://eprint.iacr.org/2022/037).
 It is `view` because it uses the EVM modular-exponentiation precompile at address `0x05`.
 On chains without this precompile it reverts with `ModExpPrecompileFailed` on every non-identity call
-(the identity point is accepted before reaching the precompile). The original pure
-`isInCorrectSubgroupAssumingOnCurve` order-multiplication check remains available as a portable fallback that
-works on any EVM.
+(the identity point is accepted before reaching the precompile).
+
+### Linked or inlined
+
+The library comes in two flavours with the same functions and the same `BabyJubJub.Affine` type:
+
+- `BabyJubJub` has `public` functions: it is deployed once and linked, and every call is a `DELEGATECALL`.
+- `BabyJubJubInternal` has `internal` functions on `memory` points: the code is inlined into your contract,
+  which saves roughly 3k gas per call (plus 2.5k for the first, cold call) at the cost of contract size.
+
+```solidity
+import {BabyJubJub} from "babyjubjub-solidity/BabyJubJub.sol";
+import {BabyJubJubInternal} from "babyjubjub-solidity/BabyJubJubInternal.sol";
+
+using BabyJubJubInternal for BabyJubJub.Affine;
+```
+
+Both are thin facades over `BabyJubJubCore`, which holds the arithmetic.
 
 Add one of the following to your `remappings.txt`, depending on how you installed the library:
 
